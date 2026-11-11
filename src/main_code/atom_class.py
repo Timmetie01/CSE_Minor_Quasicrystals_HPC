@@ -1,5 +1,5 @@
 import numpy as np
-import potentials_calculations
+from src.main_code import potentials_calculations, local_optimizers, global_optimizers
 
 class AtomCluster:
     def __init__(self, coords: np.ndarray, potential_function: callable = potentials_calculations.lennard_jones_potential):

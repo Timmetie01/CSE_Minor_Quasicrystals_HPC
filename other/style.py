@@ -1,9 +1,6 @@
-#Style guide.
+#All imports from our own files should be absolute. I.e. from src.main_code etc etc, not directly importing a file if it happens to be in the same directory.
+from src.main_code import potentials_calculations, local_optimizers, global_optimizers
 import numpy as np
-
-# Variables can be represented by their unit if no confusion can arise.
-T = 100 #K
-v_0 = np.array([0,0,0])
 
 #Written out variables should all be the same. We have the following choices:
 PascalCaseTest = False
