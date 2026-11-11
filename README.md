@@ -1,5 +1,5 @@
 # CSE_Minor_Quasicrystals_HPC
 
-Python code for simulating quasicrystal-clusters, implementing high performance computing.
+Python code for simulating quasicrystal-clusters, implementing parallelism and built to operate on the Delftblue Supercomputer.
 
-Created for the Computational Science & Engineering minor at the TU Delft.
+Developed for the Computational Science & Engineering minor at the TU Delft, course TW3725TU - Final Minor Project-part B.
