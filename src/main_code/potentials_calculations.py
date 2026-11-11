@@ -21,7 +21,7 @@ def lennard_jones_potential(r, epsilon=1.0, sigma=1.0):
 
 def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''
-    Calculate the total Lennard-Jones potential for a cluster of particles.
+    Calculate the total potential for a cluster of particles with any arbitrary potential function
 
     :param coords: array_like, shape (N, 3), 
         Coordinates of N particles in 3D space.
@@ -29,22 +29,26 @@ def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential
         Function to calculate the potential between two particles.
     :returns: float,
         Total potential of the cluster.
+    :raises ValueError: 
+        if the input coordinates are not a 2D array with shape (N, 3).
+    :raises RuntimeWarning:
+        if any two particles are at the same position, resulting in a distance of zero.
     '''
 
-    #Stacks the coordinates into a 3D matrix by repeating the coordinates along a new axis. (Used for pairwise distance calculations)
-    def coords_to_matrix(coords):
-        coords = np.asarray(coords)
-        return np.broadcast_to(coords[:, None, :], (len(coords), len(coords), 3)).copy()
+    #Enforce that the input coordinates are a 2D array with shape (N, 3)
+    coords = np.asarray(coords)
+    if coords.ndim != 2 or coords.shape[1] != 3:
+        raise ValueError("Coordinates must be a 2D array with shape (N, 3).")
 
-    coord_matrix = coords_to_matrix(coords)
+    #Stacks the coordinates into a 3D matrix by repeating the coordinates along a new axis. (Used for pairwise distance calculations)
+    coord_matrix = np.broadcast_to(coords[:, None, :], (len(coords), len(coords), 3)).copy()
 
     #The distances between all pairs of particles are calculated by subtracting the transposed coordinate matrix from the original coordinate matrix.
-    #The resulting matrix is symmetric and the diagonal is 0 (since the diagonal is the distance of a particle to itself).
+    #The resulting matrix is antisymmetric (negative transpose of itself) and the diagonal is 0 (since the diagonal is the distance of a particle to itself).
     distances = coord_matrix - coord_matrix.transpose(1, 0, 2)
-    #Change from 3D distnaces to norms, discarding the 3rd axis of the array.
-    distances = np.linalg.norm(distances, axis=-1)
 
-    #print("Distances between particles:\n", distances)
+    #Change from 3D distances to norms, discarding the 3rd axis of the array. This makes it symmetric.
+    distances = np.linalg.norm(distances, axis=-1)
 
     #Since the matrix is symmetric, only consider the upper triangle. Also discard the diagonal. This way each pair is only calculated once, is should be done for potentials
     total_potential = np.sum(potential_func(distances[np.triu_indices_from(distances, k=1)]))
