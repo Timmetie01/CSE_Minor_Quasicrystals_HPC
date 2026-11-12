@@ -16,3 +16,9 @@ ENV/
 # IDEs
 .vscode/
 .idea/
+
+# Distribution / packaging
+*.egg-info/
+.eggs/
+build/
+dist/
