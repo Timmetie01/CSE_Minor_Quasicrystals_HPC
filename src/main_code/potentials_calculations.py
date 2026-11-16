@@ -18,6 +18,22 @@ def lennard_jones_potential(r, epsilon=1.0, sigma=1.0):
     r6 = (sigma / r) ** 6
     return 4 * epsilon * (r6 * r6 - r6)
 
+def make_lennard_jones_potential(epsilon=1.0, sigma=1.0):
+    '''
+    Create a Lennard-Jones potential function with specified parameters.
+
+    :param epsilon: float, optional, 
+        Depth of the potential well.
+    :param sigma: float, optional, 
+        Finite distance at which the inter-particle potential is zero.
+    :returns: callable,
+        A function that calculates the Lennard-Jones potential for a given distance.
+    '''
+    def potential(r):
+        return lennard_jones_potential(r, epsilon, sigma)
+    return potential
+
+
 
 def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''

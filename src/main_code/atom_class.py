@@ -1,8 +1,8 @@
 import numpy as np
-from src.main_code import potentials_calculations, local_optimizers, global_optimizers
+from src.main_code import potentials_calculations
 
 class AtomCluster:
-    def __init__(self, coords: np.ndarray, potential_function: callable = potentials_calculations.lennard_jones_potential):
+    def __init__(self, coords: np.ndarray, potential_function: callable = potentials_calculations.make_lennard_jones_potential(epsilon=1, sigma=1)):
         '''
         Initialize the AtomCluster with coordinates.
 
@@ -16,7 +16,7 @@ class AtomCluster:
 
         self.potential_function = potential_function
 
-    def potential(self, potential_func=None):
+    def potential(self):
         '''
         Calculate the total potential for the cluster using the provided potential function.
 
@@ -26,6 +26,4 @@ class AtomCluster:
             Total potential of the cluster.
         '''
 
-        if potential_func is None:
-            potential_func = self.potential_function
-        return potentials_calculations.cluster_potential(self.coords, potential_func)
+        return potentials_calculations.cluster_potential(self.coords, self.potential_function)
