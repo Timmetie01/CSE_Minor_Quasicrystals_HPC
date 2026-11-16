@@ -34,6 +34,39 @@ def make_lennard_jones_potential(epsilon=1.0, sigma=1.0):
     return potential
 
 
+def oscillating_pair_potential(r, frequency=1, phase_shift=0):
+    '''
+    Calculate an oscillating pair potential for a given distance.
+    https://www.nature.com/articles/nmat4152.pdf
+
+    :param r: float or array_like, 
+        Distance between two particles.
+    :param frequency: float, optional, 
+        Frequency of the oscillation.
+    :param phase_shift: float, optional, 
+        Phase shift of the oscillation.
+    :returns: float or array_like,
+        Oscillating pair potential at distance r.   
+    '''
+
+    return r ** (-15) + r ** (-3) * np.cos(frequency * (r - 1.25) - phase_shift)
+
+def make_oscillating_pair_potential(frequency=1, phase_shift=0):
+    '''
+    Create an oscillating pair potential function with specified parameters.
+    https://www.nature.com/articles/nmat4152.pdf
+
+    :param frequency: float, optional, 
+        Frequency of the oscillation.
+    :param phase_shift: float, optional, 
+        Phase shift of the oscillation.
+    :returns: callable,
+        A function that calculates the oscillating pair potential for a given distance.
+    '''
+    def potential(r):
+        return oscillating_pair_potential(r, frequency, phase_shift)
+    return potential
+
 
 def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''
@@ -76,4 +109,3 @@ def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential
 
 
 
-    
