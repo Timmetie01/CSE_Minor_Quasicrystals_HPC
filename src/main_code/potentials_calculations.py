@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 def lennard_jones_potential(r, epsilon=1.0, sigma=1.0):
     '''
@@ -102,7 +101,6 @@ def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential
     #Since the matrix is symmetric, only consider the upper triangle. Also discard the diagonal. This way each pair is only calculated once, is should be done for potentials
     total_potential = np.sum(potential_func(distances[np.triu_indices_from(distances, k=1)]))
 
-    #print(distances[np.triu_indices_from(distances, k=1)])
     return total_potential
 
 

@@ -2,8 +2,7 @@ import numpy as np
 from src.main_code.potentials_calculations import lennard_jones_potential, cluster_potential
 import pytest
 import math as m
-import time
-import matplotlib.pyplot as plt
+
 
 def simplified_cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''
