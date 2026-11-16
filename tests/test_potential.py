@@ -1,5 +1,5 @@
 import numpy as np
-from src.main_code.potentials_calculations import lennard_jones_potential, cluster_potential
+from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, cluster_potential, cluster_potential_gradient
 import pytest
 import math as m
 
@@ -21,10 +21,30 @@ def simplified_cluster_potential(coords: np.ndarray, potential_func=lennard_jone
 
     for i in range(num_particles):
         for j in range(i + 1, num_particles):
-            distance = np.linalg.norm(coords[i] - coords[j])
+            distance = np.linalg.norm(coords[j] - coords[i])
             total_potential += potential_func(distance)
 
     return total_potential
+
+def simplified_cluster_potential_gradient(coords: np.ndarray, potential_derivative=lennard_jones_derivative):
+    '''
+    Calculate the Lennard-Jones potential gradient for a cluster of particles in a simple and correct but slow version, to benchmark against the optimized version.
+
+    :param coords: array_like, shape (N, 3), 
+        Coordinates of N particles in 3D space.
+    :param potential_func: callable, optional,
+        Function to calculate the potential between two particles.
+    :returns: float,
+        Gradient of the potential.
+    '''
+    gradient = np.zeros_like(coords, dtype=np.float64)
+    num_particles = len(coords)
+    for i in range(num_particles):
+        for j in range(num_particles):
+            if i != j:
+                rel_pos = coords[j,:] - coords[i,:]
+                gradient[i,:] += (rel_pos / np.linalg.norm(rel_pos, keepdims=True)) * potential_derivative(np.linalg.norm(rel_pos, keepdims=True)) 
+    return gradient
 
 
 def test_cluster_potential(potential_func=lennard_jones_potential):
@@ -33,14 +53,12 @@ def test_cluster_potential(potential_func=lennard_jones_potential):
         coords = np.random.rand(i, 3) * 5  # Random coordinates for i particles
         assert cluster_potential(coords, potential_func) == pytest.approx(simplified_cluster_potential(coords, potential_func)), "The two methods should yield the same result."
 
- 
-def test_single_particle(potential_func=lennard_jones_potential):  
+def test_single_particle_potential(potential_func=lennard_jones_potential):  
     np.random.seed(0)  
     coords = np.random.rand(1, 3)
     assert cluster_potential(coords, potential_func) == simplified_cluster_potential(coords, potential_func) == 0, "One particle should yield a potential of 0."
 
-
-def test_same_position_particles(potential_func=lennard_jones_potential): 
+def test_same_position_particles_potential(potential_func=lennard_jones_potential): 
     '''
     Test the behavior of the cluster_potential function when particles are at the same position. It should raise a RuntimeWarning and return NaN, as the potential is undefined (or could be considered infinite) for zero distance.
     '''
@@ -81,3 +99,49 @@ def test_potential_with_table():
                     [-0.199579143040966,   0.146776469285409,   0.23911289008365]])
 
     assert cluster_potential(coords_10_particles, lennard_jones_potential) == pytest.approx(-28.422532), "The potential for 10 particles at the specified coordinates should be -28.422532."
+
+
+def test_cluster_gradient(potential_derivative=lennard_jones_derivative):
+    for i in range(2, 103, 10):
+        np.random.seed(0)
+        coords = np.random.rand(i, 3) * 5  # Random coordinates for i particles
+        assert cluster_potential_gradient(coords, potential_derivative) == pytest.approx(simplified_cluster_potential_gradient(coords, potential_derivative)), "The two methods should yield the same result."
+
+def test_single_particle_gradient(potential_derivative=lennard_jones_derivative):
+    np.random.seed(0)
+    coords = np.random.random((1, 3))
+    assert cluster_potential_gradient(coords) == pytest.approx(np.array([[0,0,0]]))
+
+def test_same_position_particles_gradient(potential_derivative=lennard_jones_derivative):
+    '''
+    Test behaviour when particles are at the same location
+    '''
+
+
+    coords = np.array([[1, 1, 1], [1, 1, 1]])  # Two particles at the same position
+    with pytest.warns(RuntimeWarning):
+        print(cluster_potential_gradient(coords, potential_derivative))
+        assert np.isnan(np.sum(cluster_potential_gradient(coords, potential_derivative))), "The potential should be NaN for particles at the same position, and give a RuntimeWarning."
+    
+    coords = np.array([[1, 1, 1], [1, 1, 1], [2, 2, 2], [3, 3, 3]])  # Should still fail and raise warnings if not all but some particles are at the same position
+    with pytest.warns(RuntimeWarning):
+        print(cluster_potential_gradient(coords, potential_derivative))
+        assert np.isnan(np.sum(cluster_potential_gradient(coords, potential_derivative))), "The potential should be NaN for particles at the same position, and give a RuntimeWarning."
+    
+    coords = np.array([[1, 1, 1], [1, 1, 1], [2, 2, 2], [2, 2, 2]])  # Should still fail and raise warnings if some particles are at different same positions
+    with pytest.warns(RuntimeWarning):
+        print(cluster_potential_gradient(coords, potential_derivative))
+        assert np.isnan(np.sum(cluster_potential_gradient(coords, potential_derivative))), "The potential should be NaN for particles at the same position, and give a RuntimeWarning."
+
+def test_gradient_with_table():
+    coords = np.array([[0,0,0],[1,0,0]])
+    assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([[lennard_jones_derivative(1),0,0],[-lennard_jones_derivative(1),0,0]]))
+
+    coords = np.array([[-1,0,0],[0,0,0],[1,0,0]])
+    assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([
+        [lennard_jones_derivative(1) + lennard_jones_derivative(2), 0, 0],
+        [0,0,0],
+        [- lennard_jones_derivative(1) - lennard_jones_derivative(2), 0, 0]
+    ]))
+    
+
