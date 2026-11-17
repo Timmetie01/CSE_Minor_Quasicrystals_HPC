@@ -143,5 +143,10 @@ def test_gradient_with_table():
         [0,0,0],
         [- lennard_jones_derivative(1) - lennard_jones_derivative(2), 0, 0]
     ]))
-    
 
+    coords = np.array([[1,0,0],[0,0,0],[0,0,1]])
+    assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([
+        [-lennard_jones_derivative(1)-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)],
+        [lennard_jones_derivative(1),0,lennard_jones_derivative(1)],
+        [lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,-lennard_jones_derivative(1)-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)]
+    ]))
