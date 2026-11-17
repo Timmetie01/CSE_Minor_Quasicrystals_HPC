@@ -91,9 +91,3 @@ def FIRE(coords: np.ndarray, potential_derivative_func: callable,
         i += 1
 
     return coords
-
-
-np.random.seed(0)
-coords = np.random.random((4,3)) * 2.5
-opt_coords = FIRE(coords, lennard_jones_derivative)
-print(opt_coords, cluster_potential(opt_coords))
