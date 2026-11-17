@@ -46,6 +46,8 @@ def cluster_potential_benchmark():
     plt.plot(atom_count, t_optimized_grad, label='Optimized Gradient calculator', marker='+')
     plt.xlabel('Number of Particles')
     plt.ylabel('Execution Time (s)')
+    plt.title('Performance Comparison of Potential and Potential Gradient Calculators')
+    plt.grid(ls='--')
     plt.legend()
     plt.show()
 

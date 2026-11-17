@@ -132,6 +132,7 @@ def make_oscillating_pair_derivative(frequency=1.0, phase_shift=0.0):
         return oscillating_pair_derivative(r, frequency, phase_shift)
     return potential_derivative
 
+
 def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''
     Calculate the total potential for a cluster of particles with any arbitrary potential function

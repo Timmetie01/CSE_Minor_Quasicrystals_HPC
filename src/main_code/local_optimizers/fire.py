@@ -1,8 +1,5 @@
 import numpy as np
-from src.main_code.potentials_calculations import cluster_potential, cluster_potential_gradient, lennard_jones_derivative
-
-
-
+from src.main_code.potentials_calculations import cluster_potential_gradient
 
 def FIRE(coords: np.ndarray, potential_derivative_func: callable,
          Nmax=10_000, Nmin=5, f_inc=1.1, f_dec=0.5, 
@@ -91,9 +88,3 @@ def FIRE(coords: np.ndarray, potential_derivative_func: callable,
         i += 1
 
     return coords
-
-
-np.random.seed(0)
-coords = np.random.random((4,3)) * 2.5
-opt_coords = FIRE(coords, lennard_jones_derivative)
-print(opt_coords, cluster_potential(opt_coords))
