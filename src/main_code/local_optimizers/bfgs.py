@@ -26,7 +26,7 @@ def BFGS(x, potential_derivative_func: callable, potential_func: callable, tol=1
         
         p = -H @ gradx
 
-        alpha = line_search(x, p, gradx, potential_derivative_func: callable, potential_func: callable, c1 = 1e-4, c2 = 0.9)
+        alpha = line_search(x, p, gradx, potential_derivative_func, potential_func, c1 = 1e-4, c2 = 0.9)
 
         s = alpha * p
 
