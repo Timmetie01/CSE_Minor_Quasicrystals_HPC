@@ -52,12 +52,14 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, potent
     return pot_energy, accepted
 
 
-def mc_sweep(coords: np.ndarray, beta: float, n_moves: int, delta: float, potential_func=lennard_jones_potential):
+def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta: float, potential_func=lennard_jones_potential):
     '''
     Performs n_moves Monte Carlo steps and tracks the best found potential energy.
 
     :param coords: array_like, shape (N, 3), 
         Coordinates of N particles in 3D space.
+    :param energy: float,
+        Potential energy of the system.
     :param beta: float,
         Temperature dependeent constant of the system.
     :param n_moves: int,
