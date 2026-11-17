@@ -187,7 +187,7 @@ def cluster_potential_gradient(coords, potential_derivative=lennard_jones_deriva
     #Stacks the coordinates into a 3D matrix by repeating the coordinates along a new axis. (Used for pairwise distance calculations)
     #The distances between all pairs of particles are calculated by subtracting the original coordinate matrix from the transposed coordinate matrix.
     #The resulting matrix is antisymmetric (negative transpose of itself) and the diagonal is 0 (since the diagonal is the distance of a particle to itself).
-    relative_distances = coords[None, :, :] - coords[:, None, :]
+    relative_distances = coords[:, None, :] - coords[None, :, :]
 
     #removing the diagonal elements to form an NxN-1x3 array. These distances are zero and the distance from an atom to itself should not be counted. Keeping it would also give a ZeroDivisionError.
     relative_distances = relative_distances[~np.eye(num_particles, dtype=bool)].reshape(num_particles, num_particles - 1, 3)

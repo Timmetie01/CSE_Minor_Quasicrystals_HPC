@@ -42,7 +42,7 @@ def simplified_cluster_potential_gradient(coords: np.ndarray, potential_derivati
     for i in range(num_particles):
         for j in range(num_particles):
             if i != j:
-                rel_pos = coords[j,:] - coords[i,:]
+                rel_pos = coords[i,:] - coords[j,:] 
                 gradient[i,:] += (rel_pos / np.linalg.norm(rel_pos, keepdims=True)) * potential_derivative(np.linalg.norm(rel_pos, keepdims=True)) 
     return gradient
 
@@ -135,18 +135,18 @@ def test_same_position_particles_gradient(potential_derivative=lennard_jones_der
 
 def test_gradient_with_table():
     coords = np.array([[0,0,0],[1,0,0]])
-    assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([[lennard_jones_derivative(1),0,0],[-lennard_jones_derivative(1),0,0]]))
+    assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([[-lennard_jones_derivative(1),0,0],[lennard_jones_derivative(1),0,0]]))
 
     coords = np.array([[-1,0,0],[0,0,0],[1,0,0]])
     assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([
-        [lennard_jones_derivative(1) + lennard_jones_derivative(2), 0, 0],
+        [-lennard_jones_derivative(1) - lennard_jones_derivative(2), 0, 0],
         [0,0,0],
-        [- lennard_jones_derivative(1) - lennard_jones_derivative(2), 0, 0]
+        [lennard_jones_derivative(1) + lennard_jones_derivative(2), 0, 0]
     ]))
 
     coords = np.array([[1,0,0],[0,0,0],[0,0,1]])
     assert cluster_potential_gradient(coords, lennard_jones_derivative) == pytest.approx(np.array([
-        [-lennard_jones_derivative(1)-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)],
-        [lennard_jones_derivative(1),0,lennard_jones_derivative(1)],
-        [lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,-lennard_jones_derivative(1)-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)]
+        [lennard_jones_derivative(1) + lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)],
+        [-lennard_jones_derivative(1),0,-lennard_jones_derivative(1)],
+        [-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,lennard_jones_derivative(1) + lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)]
     ]))
