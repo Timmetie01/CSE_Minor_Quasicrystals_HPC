@@ -2,9 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential
 
+#More explanation can be found in chapter 3 of https://drive.google.com/file/d/1pxCWOTs2BM8Df1EvQv6NlNiXXUVjdwx8/view?usp=sharing
+
+
 def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, potential_func=lennard_jones_potential):
     '''
-    Pertrubs a single atom acording to the metropolis condition
+    Pertrubs a single atom according to the metropolis condition
 
     :param coords: array_like, shape (N, 3), 
         Coordinates of N particles in 3D space.
@@ -49,14 +52,14 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, potent
     return pot_energy, accepted
 
 
-def mc_sweep(coords: np.ndarray, T: float, n_moves: int, delta: float, potential_func=lennard_jones_potential):
+def mc_sweep(coords: np.ndarray, beta: float, n_moves: int, delta: float, potential_func=lennard_jones_potential):
     '''
     Performs n_moves Monte Carlo steps and tracks the best found potential energy.
 
     :param coords: array_like, shape (N, 3), 
         Coordinates of N particles in 3D space.
-    :param T: float,
-        Temperature of the system.
+    :param beta: float,
+        Temperature dependeent constant of the system.
     :param n_moves: int,
         Amount of Monte Carlo steps to perform for the sweep.
     :param delta: float,
@@ -79,8 +82,6 @@ def mc_sweep(coords: np.ndarray, T: float, n_moves: int, delta: float, potential
     best_coords = coords.copy()
     n_accepted_steps = 0 #To tune delta later keep track of how often we accept
 
-    k_b = 1 #boltzmann constant, 1 is for standard units in LJ potential
-    beta = 1/(k_b*T)
 
     for i in range(n_moves):
         energy, accepted = mc_step(coords, energy, beta, delta, potential_func)
