@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time as t
 
 from src.main_code.local_optimizers import fire, bfgs
-from src.main_code.potentials_calculations import lennard_jones_derivative, lennard_jones_potential
+from src.main_code.potentials_calculations import lennard_jones_derivative
 import pytest
 
 glob_opt_150 = np.array([
@@ -177,23 +177,22 @@ def compare_near_global(glob_opt_coords, N):
         fire_opt = fire.FIRE(offset_coords, lennard_jones_derivative)
         fire_times[i] = t.time() - t0
 
-        t0 = t.time()
-        bfgs_opt = bfgs.BFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential)
-        bfgs_times[i] = t.time() - t0
+        #t0 = t.time()
+        #bfgs_opt = bfgs.BFGS(offset_coords, lennard_jones_derivative)
+        #bfgs_times[i] = t.time() - t0
 
         if fire_opt == pytest.approx(glob_opt_coords):
             fire_reaches_glob[i] = True
-        if bfgs_opt == pytest.approx(glob_opt_coords):
-            bfgs_reaches_glob[i] = True    
+        #if bfgs_opt == pytest.approx(glob_opt_coords):
+        #    bfgs_reaches_glob[i] = True    
 
-    
-    plt.hist([fire_times,bfgs_times], color=['firebrick','darkblue'], label=['FIRE', 'BFGS'], bins=20)
+    plt.hist(fire_times, color='firebrick', bins=25)
+    #plt.hist(bfgs_times, 'darkblue')
     plt.xlabel('Optimization run duration')
     plt.ylabel('Amount of times occured')
-    plt.legend()
     plt.show()
         
-compare_near_global(np.array([[0,0,0], [2,0,0], [0,1,0]]), 1000)
+compare_near_global(np.array([[0,0,0], [2,0,0]]), 1000)
 compare_near_global(glob_opt_150, 50)
         
 

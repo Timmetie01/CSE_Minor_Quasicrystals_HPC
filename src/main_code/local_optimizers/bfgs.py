@@ -24,6 +24,7 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
 
     H0 = 0.02
     H = H0 * np.eye(len(x))
+    outer_buf = np.empty_like(H)
     E = pot(x)
     gradx = grad(x)
     c1 = 1e-4
@@ -35,7 +36,8 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
         p = -H @ gradx
 
         max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
-        if max_disp > max_step:
+        was_clamped = max_disp > max_step
+        if was_clamped:
             p *= max_step / max_disp
 
         direc_deriv = gradx @ p
@@ -56,7 +58,7 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
                 break
             
             denom = 2.0 * (E_new - E - direc_deriv * alpha)
-            if denom > 1e-14:
+            if denom > 1e-14 and not was_clamped:
                 alpha_interp = -(direc_deriv * alpha * alpha) / denom
                 alpha = np.clip(alpha_interp, 0.1 * alpha, 0.5 * alpha)
             else:
@@ -75,7 +77,11 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
             rho = 1.0 / ys
             Hy = H @ y
             yHy = y @ Hy
-            H += (rho + rho * rho * yHy) * np.outer(s, s) - rho * (np.outer(s, Hy) + np.outer(Hy, s))
+            np.multiply.outer(s, s, out=outer_buf)
+            H += (rho + rho * rho * yHy) * outer_buf
+            np.multiply.outer(s, Hy, out=outer_buf)
+            H -= rho * outer_buf
+            H -= rho * outer_buf.T
 
         gradx = gradx_new
 
