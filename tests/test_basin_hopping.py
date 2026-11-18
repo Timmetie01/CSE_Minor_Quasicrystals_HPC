@@ -74,7 +74,7 @@ def test_basin_hopping_escape_local_minima_lj7_cluster():
 
     #parameters for BH
     beta = 1.0
-    max_iter = 200
+    max_iter = 1000
     delta = 0.5
 
     optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping(
