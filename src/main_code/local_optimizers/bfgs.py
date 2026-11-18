@@ -15,9 +15,13 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
     p: search direction vector/minimiser
     
     '''
+    
+    validate_bfgs_data(x, potential_derivative_func, potential_func, max_iter, tol, max_step)
 
+    x = np.asarray(x, dtype=np.float64)
     shape = x.shape
-    x = np.array(x, dtype=float).ravel()
+    x = np.array(x, dtype=np.float64).ravel()
+    
 
     def pot(x_flat): return cluster_potential(x_flat.reshape(shape), potential_func)
     def grad(x_flat): return cluster_potential_gradient(x_flat.reshape(shape), potential_derivative_func).ravel()
@@ -85,4 +89,47 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
 
         gradx = gradx_new
 
+        if k == max_iter - 1:
+            raise RuntimeWarning("BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...")
+
     return x.reshape(shape)
+
+
+def validate_bfgs_data(x_arr, potential_derivative_func, potential_func, max_iter, tol, max_step):
+    # 1. Validate x (convert before checking .shape so lists/tuples work)
+    try:
+        x_arr = np.asarray(x, dtype=float)
+    except (TypeError, ValueError) as e:
+        raise TypeError("x must be convertible to a floating-point NumPy array.") from e
+
+    if x_arr.ndim != 2 or x_arr.shape[1] != 3:
+        raise ValueError(f"x must have shape (N, 3), got {x_arr.shape}.")
+    if x_arr.shape[0] == 0:
+        raise ValueError("x must contain at least one particle (N >= 1).")
+    if not np.all(np.isfinite(x_arr)):
+        raise ValueError("x must not contain NaN or infinite values.")
+
+    # 2. Validate callables
+    if not callable(potential_derivative_func):
+        raise TypeError("potential_derivative_func must be callable.")
+    if not callable(potential_func):
+        raise TypeError("potential_func must be callable.")
+
+    # 3. Validate max_iter (reject booleans since isinstance(True, int) is True)
+    if isinstance(max_iter, bool) or not isinstance(max_iter, (int, np.integer)):
+        raise TypeError(f"max_iter must be an integer, got {type(max_iter).__name__}.")
+    if max_iter < 1:
+        raise ValueError(f"max_iter must be >= 1, got {max_iter}.")
+
+    # 4. Validate floating-point parameters
+    for name, val in [("tol", tol), ("max_step", max_step)]:
+        if isinstance(val, bool) or not isinstance(val, (int, float, np.number)):
+            raise TypeError(f"{name} must be a real number, got {type(val).__name__}.")
+        if not np.isfinite(val):
+            raise ValueError(f"{name} must be finite, got {val}.")
+        if val <= 0.0:
+            raise ValueError(f"{name} must be > 0, got {val}.")
+
+    # Replace your original `shape = x.shape` and `x = ...` lines with:
+    shape = x_arr.shape
+    x = x_arr.ravel().copy()
