@@ -131,5 +131,6 @@ def random_perturbation(coords: np.ndarray, delta: float) -> np.ndarray:
 
     idx = np.random.randint(len(new_coords))
     new_coords[idx] += np.random.uniform(-delta, delta, 3)
+    #new_coords += np.random.uniform(-delta, delta, new_coords.shape) 
 
     return new_coords
