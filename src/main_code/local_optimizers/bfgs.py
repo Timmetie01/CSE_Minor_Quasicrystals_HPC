@@ -130,6 +130,145 @@ def validate_bfgs_data(x_arr, potential_derivative_func, potential_func, max_ite
         if val <= 0.0:
             raise ValueError(f"{name} must be > 0, got {val}.")
 
-    # Replace your original `shape = x.shape` and `x = ...` lines with:
-    shape = x_arr.shape
-    x = x_arr.ravel().copy()
+
+
+
+from collections import deque
+from collections.abc import Callable
+from src.main_code.potentials_calculations import (
+    cluster_potential_gradient,
+    cluster_potential,
+    lennard_jones_derivative,
+    lennard_jones_potential,
+)
+import numpy as np
+
+
+def LBFGS(
+    x: np.ndarray,
+    potential_derivative_func: Callable = lennard_jones_derivative,
+    potential_func: Callable = lennard_jones_potential,
+    tol: float = 1e-5,
+    max_iter: int = 1000,
+    max_step: float = 0.1,
+    m: int = 10,
+) -> np.ndarray:
+    """
+    Minimize the potential energy of an atomic cluster using the Limited-Memory
+    BFGS (L-BFGS) algorithm with two-loop recursion, quadratic-interpolated
+    Armijo backtracking, and per-atom step capping.
+
+    Parameters
+    ----------
+    x : np.ndarray, shape (N, 3)
+        Initial 3D coordinates of the N particles in the cluster.
+    potential_derivative_func : Callable, optional
+        Derivative of the pair potential with respect to inter-particle distance r.
+    potential_func : Callable, optional
+        Pair potential function with respect to inter-particle distance r.
+    tol : float, optional
+        Convergence threshold for the maximum absolute force component. Default is 1e-5.
+    max_iter : int, optional
+        Maximum number of optimization iterations. Default is 1000.
+    max_step : float, optional
+        Maximum allowed spatial displacement per particle per iteration. Default is 0.1.
+    m : int, optional
+        Number of past curvature pairs (s, y) retained in history. Default is 10.
+
+    Returns
+    -------
+    np.ndarray, shape (N, 3)
+        Optimized 3D coordinates of the N particles at a local energy minimum.
+    """
+    shape = x.shape
+    x = np.array(x, dtype=float).ravel()
+
+    def pot(x_flat: np.ndarray) -> float:
+        return cluster_potential(x_flat.reshape(shape), potential_func)
+
+    def grad(x_flat: np.ndarray) -> np.ndarray:
+        return cluster_potential_gradient(x_flat.reshape(shape), potential_derivative_func).ravel()
+
+    H0 = 0.02
+    c1 = 1e-4
+
+    # Fixed-length ring buffers storing recent (s, y, rho) curvature pairs
+    s_hist: deque[np.ndarray] = deque(maxlen=m)
+    y_hist: deque[np.ndarray] = deque(maxlen=m)
+    rho_hist: deque[float] = deque(maxlen=m)
+    alpha_buf = np.empty(m, dtype=float)
+
+    E = pot(x)
+    gradx = grad(x)
+
+    for k in range(max_iter):
+        if np.max(np.abs(gradx)) < tol:
+            break
+
+        # --- Two-loop recursion to compute p = -H_k @ gradx ---
+        q = gradx.copy()
+        hist_len = len(s_hist)
+
+        for idx in range(hist_len - 1, -1, -1):
+            a = rho_hist[idx] * (s_hist[idx] @ q)
+            alpha_buf[idx] = a
+            q -= a * y_hist[idx]
+
+        # Dynamic Barzilai-Borwein initial Hessian scaling (falls back to H0 on step 0)
+        if hist_len > 0:
+            y_last = y_hist[-1]
+            gamma = (s_hist[-1] @ y_last) / (y_last @ y_last)
+            r = gamma * q
+        else:
+            r = H0 * q
+
+        for idx in range(hist_len):
+            beta = rho_hist[idx] * (y_hist[idx] @ r)
+            r += (alpha_buf[idx] - beta) * s_hist[idx]
+
+        p = -r
+
+        # Descent safeguard: wipe corrupted history and fall back to scaled steepest descent
+        if gradx @ p >= 0.0:
+            s_hist.clear()
+            y_hist.clear()
+            rho_hist.clear()
+            p = -H0 * gradx
+
+        # Per-atom max displacement cap
+        max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
+        was_clamped = max_disp > max_step
+        if was_clamped:
+            p *= max_step / max_disp
+
+        direc_deriv = gradx @ p
+
+        # Armijo backtracking with safeguarded quadratic interpolation
+        alpha = 1.0
+        for _ in range(20):
+            s = alpha * p
+            E_new = pot(x + s)
+            if E_new <= E + c1 * alpha * direc_deriv:
+                break
+
+            denom = 2.0 * (E_new - E - direc_deriv * alpha)
+            if denom > 1e-14 and not was_clamped:
+                alpha_interp = -(direc_deriv * alpha * alpha) / denom
+                alpha = np.clip(alpha_interp, 0.1 * alpha, 0.5 * alpha)
+            else:
+                alpha *= 0.5
+
+        x += s
+        E = E_new
+        gradx_new = grad(x)
+
+        y = gradx_new - gradx
+        ys = y @ s
+        if ys > 1e-14:
+            s_hist.append(s)
+            y_hist.append(y)
+            rho_hist.append(1.0 / ys)
+
+        gradx = gradx_new
+
+    return x.reshape(shape)
