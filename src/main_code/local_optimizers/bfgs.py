@@ -17,14 +17,16 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
     '''
 
     shape = x.shape
-    x = np.array(x, dtype=float).flatten()
+    x = np.array(x, dtype=float).ravel()
 
     def pot(x_flat): return cluster_potential(x_flat.reshape(shape), potential_func)
     def grad(x_flat): return cluster_potential_gradient(x_flat.reshape(shape), potential_derivative_func).ravel()
 
-    H = 0.02 * np.eye(len(x))
+    H0 = 0.02
+    H = H0 * np.eye(len(x))
     E = pot(x)
     gradx = grad(x)
+    c1 = 1e-4
 
     for k in range(max_iter):
         if np.max(np.abs(gradx)) < tol:
@@ -36,15 +38,29 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
         if max_disp > max_step:
             p *= max_step / max_disp
 
-        alpha = 1.0
-        c1 = 1e-4
         direc_deriv = gradx @ p
+        
+        if direc_deriv >= 0:
+            H = H0 * np.eye(len(x))
+            p = -H @ gradx
+            max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
+            if max_disp > max_step:
+                p *= max_step / max_disp
+            direc_deriv = gradx @ p
+
+        alpha = 1.0
         for j in range(20):
             s = alpha * p
             E_new = pot(x + s)
             if E_new <= E + c1 * alpha * direc_deriv:
                 break
-            alpha *= 0.5
+            
+            denom = 2.0 * (E_new - E - direc_deriv * alpha)
+            if denom > 1e-14:
+                alpha_interp = -(direc_deriv * alpha * alpha) / denom
+                alpha = np.clip(alpha_interp, 0.1 * alpha, 0.5 * alpha)
+            else:
+                alpha *= 0.5
 
         x += s
 
