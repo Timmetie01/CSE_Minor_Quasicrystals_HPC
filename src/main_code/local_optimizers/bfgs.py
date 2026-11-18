@@ -15,7 +15,7 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
     p: search direction vector/minimiser
     
     '''
-    
+
     validate_bfgs_data(x, potential_derivative_func, potential_func, max_iter, tol, max_step)
 
     x = np.asarray(x, dtype=np.float64)
@@ -98,7 +98,7 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
 def validate_bfgs_data(x_arr, potential_derivative_func, potential_func, max_iter, tol, max_step):
     # 1. Validate x (convert before checking .shape so lists/tuples work)
     try:
-        x_arr = np.asarray(x, dtype=float)
+        x_arr = np.asarray(x_arr, dtype=float)
     except (TypeError, ValueError) as e:
         raise TypeError("x must be convertible to a floating-point NumPy array.") from e
 
