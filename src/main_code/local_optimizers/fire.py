@@ -3,9 +3,9 @@ from src.main_code.potentials_calculations import cluster_potential_gradient
 from collections.abc import Callable
 
 def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
-         Nmax=10_000, Nmin=5, f_inc=1.1, f_dec=0.5, 
-         alpha0=0.1, f_alpha=0.99, err_tol=1e-5, 
-         dt=0.002, max_step=0.05):
+         Nmax: int = 10_000, Nmin: int = 5, f_inc: float = 1.1, f_dec: float = 0.5, 
+         alpha0: float = 0.1, f_alpha: float = 0.99, err_tol: float = 1e-5 , 
+         dt: float = 0.002, max_step: float = 0.05):
     '''
     Minimize the potential energy of a particle cluster using the Fast Inertial
     Relaxation Engine (FIRE) algorithm with Velocity Verlet integration.
@@ -95,7 +95,10 @@ def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
 
     return coords
 
-def validate_fire_data(coords, potential_derivative_func, Nmax, Nmin, f_inc, f_dec, alpha0, err_tol, f_alpha, dt, max_step):
+def validate_fire_data(coords: np.ndarray, potential_derivative_func: Callable,
+         Nmax: int, Nmin: int, f_inc: float, f_dec: float, 
+         alpha0: float, f_alpha: float, err_tol: float, 
+         dt: float, max_step: float):
     # 1. Validate coords
     try:
         coords = np.asarray(coords, dtype=float)
