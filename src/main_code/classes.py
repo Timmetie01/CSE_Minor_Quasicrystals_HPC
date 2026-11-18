@@ -107,3 +107,97 @@ class AtomCluster:
         if change_own_coords:
             self.coords = opt_coords
         return opt_coords
+
+    def BFGS(self, coords=None, tol=1e-5, max_iter=1000, max_step=0.1):
+        '''
+        STILL NEEDS DOCUMENTATION
+        
+        '''
+
+
+        change_own_coords = False
+        if coords == None: 
+            coords = self.coords
+            change_own_coords = True
+
+        opt_coords = bfgs.BFGS(coords, self.potential_derivative, self.potential_func, tol=tol, max_iter=max_iter, max_step=max_step)
+
+        if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
+
+    def basin_hopping(self, coords=None):
+        '''
+        NOT IMPLEMENTED HERE YET
+
+        raises: NotImplementedError
+        '''
+        raise NotImplementedError
+
+        change_own_coords = False
+        if coords == None: 
+            coords = self.coords
+            change_own_coords = True
+
+        opt_coords = func()
+
+        if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
+
+    def genetic_algorithm(self, coords=None):
+        '''
+        NOT IMPLEMENTED HERE YET
+
+        raises: NotImplementedError
+        '''
+        raise NotImplementedError
+
+        change_own_coords = False
+        if coords == None: 
+            coords = self.coords
+            change_own_coords = True
+
+        opt_coords = func()
+
+        if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
+
+    def parallel_tempering(self, coords=None):
+        '''
+        NOT IMPLEMENTED HERE YET
+
+        raises: NotImplementedError
+        '''
+        raise NotImplementedError
+
+        change_own_coords = False
+        if coords == None: 
+            coords = self.coords
+            change_own_coords = True
+
+        opt_coords = func()
+
+        if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
+
+    def simulated_annealing(self, coords=None):
+        '''
+        NOT IMPLEMENTED HERE YET
+
+        raises: NotImplementedError
+        '''
+        raise NotImplementedError
+
+        change_own_coords = False
+        if coords == None: 
+            coords = self.coords
+            change_own_coords = True
+
+        opt_coords = func()
+
+        if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
