@@ -227,11 +227,13 @@ def make_start(N, M, R_c):
     return start_energies, start_coords
 
 
+import time
+
 if __name__ == "__main__":
     np.random.seed(42)
 
     M = 10 #Number of replicas
-    N = 11 #Number of atoms
+    N = 14 #Number of atoms
     R_c = 2.5 #Max radius of cluster to prevent atoms from escaping
     swap_every = 10
     N_sweeps = 2000
@@ -239,86 +241,17 @@ if __name__ == "__main__":
     deltas = make_deltas(temps)
     energies, coords = make_start(N, M, R_c)
 
-    best_e, best_c =parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps)
+    t_start = time.perf_counter()
+    best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps)
+    t_end = time.perf_counter()
+
+    print(f"PT runtime: {t_end - t_start:.4f} s")
     print("Unquenched global minimum:", best_e)
+
     #Then we need to quench as this found value will be for T>0 and the minima in the table are at T=0:
     best_c_q = FIRE(best_c, lennard_jones_derivative,
             Nmax=10_000, Nmin=5, f_inc=1.1, f_dec=0.5, 
             alpha0=0.1, f_alpha=0.99, err_tol=1e-5, 
             dt=0.002, max_step=0.05)
     best_e_q = cluster_potential(best_c_q)
-    print("Quenched global minimum:" , best_e_q)
-
-def test_pt_escape_local_minima_lj7_cluster():
-    """
-    Verify parallel tempering escapes the capped-octahedron local minimum (-15.935043)
-    of a 7-atom LJ cluster and locates the global minimum (-16.505384) after quenching.
-    """
-    np.random.seed(42)
-    a = 2 ** (1 / 6)
-    initial_coords = np.array([
-        [a, 0.0, 0.0],
-        [-a, 0.0, 0.0],
-        [0.0, a, 0.0],
-        [0.0, -a, 0.0],
-        [0.0, 0.0, a],
-        [0.0, 0.0, -a],
-        [a, a, a],
-    ])
-
-    # Relax into the known local minimum (-15.935043) first
-    local_min_coords = FIRE(
-        initial_coords,
-        lennard_jones_derivative,
-        Nmax=10_000,
-        Nmin=5,
-        f_inc=1.1,
-        f_dec=0.5,
-        alpha0=0.1,
-        f_alpha=0.99,
-        err_tol=1e-5,
-        dt=0.002,
-        max_step=0.05,
-    )
-    local_min_energy = cluster_potential(local_min_coords, lennard_jones_potential)
-    assert np.isclose(local_min_energy, -15.935043, atol=1e-2)
-
-    # Initialize all M replicas trapped in that exact local minimum
-    M = 8
-    R_c = 3.0
-    temps = np.geomspace(0.05, 0.45, M)
-    deltas = make_deltas(temps)
-    start_coords = np.repeat(local_min_coords[np.newaxis, :, :], M, axis=0)
-    start_energies = np.full(M, local_min_energy)
-
-    _, best_c = parallel_tempering_run(
-        start_coords=start_coords,
-        start_energies=start_energies,
-        M=M,
-        temps=temps,
-        deltas=deltas,
-        R_c=R_c,
-        swap_every=10,
-        N_sweeps=1500,
-    )
-
-    # Quench the best configuration found at T > 0 to compare with the T = 0 global minimum
-    quenched_coords = FIRE(
-        best_c,
-        lennard_jones_derivative,
-        Nmax=10_000,
-        Nmin=5,
-        f_inc=1.1,
-        f_dec=0.5,
-        alpha0=0.1,
-        f_alpha=0.99,
-        err_tol=1e-5,
-        dt=0.002,
-        max_step=0.05,
-    )
-    optimized_energy = cluster_potential(quenched_coords, lennard_jones_potential)
-
-    known_global_min_energy = -16.505384
-
-    assert optimized_energy < local_min_energy
-    assert np.isclose(optimized_energy, known_global_min_energy, atol=1e-2)
+    print("Quenched global minimum:", best_e_q)

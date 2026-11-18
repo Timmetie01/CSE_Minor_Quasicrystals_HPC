@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential
+from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential, single_atom_potential
 
 #More explanation can be found in chapter 3 of https://drive.google.com/file/d/1pxCWOTs2BM8Df1EvQv6NlNiXXUVjdwx8/view?usp=sharing
 
@@ -35,6 +35,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
     idx = np.random.randint(n_atoms) #choose what atom to pertrube randomly
 
     old_pos = coords[idx].copy()
+    old_energy_idx = single_atom_potential(coords, idx, lennard_jones_potential)
 
     move = np.random.uniform(-delta, delta, 3)
     coords[idx] += move
@@ -44,9 +45,8 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
         coords[idx] = old_pos #revert move if not accepted
         pot_energy = energy
         return pot_energy, accepted
-    energy_new = cluster_potential(coords, potential_func)
-    #Naive implementation calculating potential for full cluster, can be sped up by reusing potentials
-    # and only recalculating for the atom that actually moves
+    new_energy_idx = single_atom_potential(coords, idx, lennard_jones_potential)
+    energy_new = energy -old_energy_idx +new_energy_idx
     delta_energy = energy_new - energy
 
     if delta_energy <= 0.0 or np.random.rand() < np.exp(-beta * (delta_energy)): #Metropolis criterion

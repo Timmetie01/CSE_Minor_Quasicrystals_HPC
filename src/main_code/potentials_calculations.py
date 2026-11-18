@@ -133,6 +133,33 @@ def make_oscillating_pair_derivative(frequency=1.0, phase_shift=0.0):
     return potential_derivative
 
 
+def single_atom_potential(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential):
+    '''
+    Calculate the total potential of one atom with the rest for any arbitrary potential function
+
+    :param coords: array_like, shape (N, 3), 
+        Coordinates of N particles in 3D space.
+    :param idx: int,
+        Index of the atom of which the potential will be calculated.
+    :param potential_func: callable, optional,
+        Function to calculate the potential between two particles.
+    :returns: float,
+        Total potential of all other atoms with atom number idx.
+    :raises ValueError: 
+        if the input coordinates are not a 2D array with shape (N, 3).
+    :raises RuntimeWarning:
+        if any two particles are at the same position, resulting in a distance of zero.
+    '''
+
+    #Enforce that the input coordinates are a 2D array with shape (N, 3)
+    coords = np.asarray(coords)
+    if coords.ndim != 2 or coords.shape[1] != 3:
+        raise ValueError("Coordinates must be a 2D array with shape (N, 3).")
+    diff = coords - coords[idx]
+    dist = np.sqrt(np.sum(diff * diff, axis=1))
+    return float(np.sum(potential_func(dist[dist>0]))) #Dont include the 0 distance from idx with itself
+
+
 def cluster_potential(coords: np.ndarray, potential_func=lennard_jones_potential):
     '''
     Calculate the total potential for a cluster of particles with any arbitrary potential function
