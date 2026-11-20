@@ -28,3 +28,42 @@ def read_LJwales_data(atom_count:int):
         return np.array([[0,0,0]])
 
     return np.load(fr"data\LJ_data_wales\{atom_count}.npy")
+
+
+def highscores(new_data:np.ndarray, method_str:str, potential_str='LJ', potential_parameters=(None,None)):
+    '''
+    Function to track the global minima we obtained. It compares to our own previous bests (if that exists).
+    If 'data' has a lower potential than our current best it is saved, a message is printed to the terminal
+    and the records log is updated to include the current best potential, the date at which this happened, the method etc.
+
+    :param new_data: np.ndarray, Nx3
+        blabla
+    :param potential_sts: string, 'LJ' or 'OP'
+        etcetc
+    :potential_parameters: tuple of floats or ints
+
+    :param method_str: string
+        smthng
+    '''
+
+    atom_count = new_data.size[0]
+    new_best = False
+    first_attempt=False
+
+    if potential_str == 'LJ':
+        pass
+    elif potential_str == 'OP':
+        pass
+    else:
+        raise ValueError
+
+    try:
+        old_record = np.load(fr"data\group_records\{atom_count}.npy")
+    except FileNotFoundError:
+        first_attempt=True
+
+    if not first_attempt:
+        pass
+        #if cluster_potential(new_data, potential_func) < cluster_potential(old_record, potential_func)
+
+
