@@ -1,73 +1,115 @@
 from src.main_code.potentials_calculations import cluster_potential_gradient, cluster_potential, lennard_jones_derivative, lennard_jones_potential
 import numpy as np
+import warnings
 
 
-def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, potential_func: callable = lennard_jones_potential, tol=1e-5, max_iter=1000, max_step=0.1):
-    '''
-    !!!DRAFT - NOT FULLY TESTED YET!!!
-
-    x: coordinates
-
-    s: displacement of coordinates
-
-    alpha: step length (chosen using a line search)
-
-    p: search direction vector/minimiser
+def BFGS(
+        x, 
+        potential_derivative_func: callable = lennard_jones_derivative, 
+        potential_func: callable = lennard_jones_potential, 
+        tol: float = 1e-5, 
+        max_iter: int = 1000, 
+        max_step:float = 0.1, 
+        keep_steps: bool = False
+        ):
     
+    '''
+    Minimize the potential energy of a particle cluster using the Broyden-Fletcher-
+    Goldfarb-Shanno (BFGS) quasi-Newton algorithm with an Armijo backtracking
+    and quadratic interpolation line search.
+    https://doi.org/10.1007/978-0-387-40065-5
+
+    :param x: array_like, shape (N, 3)
+        Initial 3D coordinates of the N particles in the cluster.
+    :param potential_derivative_func: callable
+        Function that calculates the derivative of the pair potential with respect
+        to inter-particle distance r. Default is lennard_jones_derivative.
+    :param potential_func: callable
+        Function that calculates the pair potential energy as a function of
+        inter-particle distance r. Default is lennard_jones_potential.
+    :param tol: float
+        Convergence threshold for the maximum absolute gradient component on any
+        particle. Default is 1e-5.
+    :param max_iter: int
+        Maximum number of BFGS optimization iterations. Default is 1000.
+    :param max_step: float
+        Maximum allowed spatial displacement per particle in a single iteration to
+        prevent numerical instability from large initial forces. Default is 0.1.
+    :param keep_steps: bool
+        If True, records and returns the trajectory of coordinates across all
+        iterations alongside the final coordinates. Default is False.
+    :returns: ndarray, shape (N, 3) or tuple of (ndarray, ndarray)
+        Returns the optimized 3D coordinates of the N particles at a local energy 
+        minimum, shape (N, 3).
+        If keep_steps is True, also returns step_list, which has shape 
+        (n_iter + 1, N, 3) and contains the coordinates at each intermediate iteration.
     '''
 
     validate_bfgs_data(x, potential_derivative_func, potential_func, max_iter, tol, max_step)
 
+    # 1: Bookkeeping
     x = np.asarray(x, dtype=np.float64)
     shape = x.shape
     x = np.array(x, dtype=np.float64).ravel()
     
+    if keep_steps:
+        step_list = [x.reshape(shape).copy()]
 
     def pot(x_flat): return cluster_potential(x_flat.reshape(shape), potential_func)
     def grad(x_flat): return cluster_potential_gradient(x_flat.reshape(shape), potential_derivative_func).ravel()
 
-    H0 = 0.02
-    H = H0 * np.eye(len(x))
-    outer_buf = np.empty_like(H)
+    
+    # 2: Defining initial parameters
+    H0 = 0.02                                                                   #initial inverse Hessian scaling factor
+    H = H0 * np.eye(len(x))                                                     #First step is a scaled steepest descent
+    outer_buf = np.empty_like(H)                                                #Buffer for outer products to minimize memory-allocation overhead
     E = pot(x)
     gradx = grad(x)
-    c1 = 1e-4
+    c1 = 1e-4                                                                   #Armijo condition constant/sufficient decrease parameter
+    n_iter = 0
 
+
+    # 3: Main loop
     for k in range(max_iter):
+        # 3.1: Checking convergence criterium
         if np.max(np.abs(gradx)) < tol:
             break
-        
-        p = -H @ gradx
 
+
+        # 3.2: Calculating directional derivative (scaling search direction vector p such that the largest displacement becomes max_step if neccessary)
+        p = -H @ gradx
         max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
         was_clamped = max_disp > max_step
         if was_clamped:
             p *= max_step / max_disp
-
         direc_deriv = gradx @ p
         
-        if direc_deriv >= 0:
-            H = H0 * np.eye(len(x))
+        if direc_deriv >= 0:                                                #Resetting the Hessian matrix with a scaled steepest descent iteration
+            H = H0 * np.eye(len(x))                                         #if it becomes nonsensical
             p = -H @ gradx
             max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
             if max_disp > max_step:
                 p *= max_step / max_disp
             direc_deriv = gradx @ p
 
+
+        # 3.3: Line search to obtain step length alpha
         alpha = 1.0
         for j in range(20):
             s = alpha * p
             E_new = pot(x + s)
-            if E_new <= E + c1 * alpha * direc_deriv:
+            if E_new <= E + c1 * alpha * direc_deriv:                       #Checking Armijo condition (sufficient decrease in potential energy)
                 break
             
-            denom = 2.0 * (E_new - E - direc_deriv * alpha)
+            denom = 2.0 * (E_new - E - direc_deriv * alpha)                 #Applying quadratic interpolation of E(alpha) to estimate optimal step length
             if denom > 1e-14 and not was_clamped:
                 alpha_interp = -(direc_deriv * alpha * alpha) / denom
                 alpha = np.clip(alpha_interp, 0.1 * alpha, 0.5 * alpha)
-            else:
-                alpha *= 0.5
+            else:                                                           #Fallback to standard backtracking halving if quadratic interpolation is 
+                alpha *= 0.5                                                #ill-conditioned
 
+        
+        # 3.4: Updating parameters
         x += s
 
         E = E_new
@@ -89,10 +131,22 @@ def BFGS(x, potential_derivative_func: callable = lennard_jones_derivative, pote
 
         gradx = gradx_new
 
-        if k == max_iter - 1:
-            raise RuntimeWarning("BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...")
+        n_iter += 1
+        if keep_steps:
+            step_list.append(x.reshape(shape).copy())
 
-    return x.reshape(shape)
+
+    # 4: Returning coordinates
+    if np.max(np.abs(gradx)) >= tol:
+        warnings.warn("BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
+    else:
+        print(f"BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
+
+    final_coords = x.reshape(shape)
+
+    if not keep_steps:
+        return final_coords
+    return final_coords, np.asarray(step_list, dtype=np.float64)
 
 
 def validate_bfgs_data(x_arr, potential_derivative_func, potential_func, max_iter, tol, max_step):
@@ -152,36 +206,49 @@ def LBFGS(
     max_iter: int = 1000,
     max_step: float = 0.1,
     m: int = 10,
-) -> np.ndarray:
-    """
+    keep_steps: bool = False
+    ):
+
+    '''
     Minimize the potential energy of an atomic cluster using the Limited-Memory
-    BFGS (L-BFGS) algorithm with two-loop recursion, quadratic-interpolated
-    Armijo backtracking, and per-atom step capping.
+    Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) algorithm with two-loop recursion, 
+    quadratic-interpolated Armijo backtracking, and per-atom step capping.
+    https://doi.org/10.1007/978-0-387-40065-5
 
-    Parameters
-    ----------
-    x : np.ndarray, shape (N, 3)
+    :param x: array_like, shape (N, 3)
         Initial 3D coordinates of the N particles in the cluster.
-    potential_derivative_func : Callable, optional
-        Derivative of the pair potential with respect to inter-particle distance r.
-    potential_func : Callable, optional
-        Pair potential function with respect to inter-particle distance r.
-    tol : float, optional
-        Convergence threshold for the maximum absolute force component. Default is 1e-5.
-    max_iter : int, optional
-        Maximum number of optimization iterations. Default is 1000.
-    max_step : float, optional
-        Maximum allowed spatial displacement per particle per iteration. Default is 0.1.
-    m : int, optional
+    :param potential_derivative_func: callable
+        Function that calculates the derivative of the pair potential with respect
+        to inter-particle distance r. Default is lennard_jones_derivative.
+    :param potential_func: callable
+        Function that calculates the pair potential energy as a function of
+        inter-particle distance r. Default is lennard_jones_potential.
+    :param tol: float
+        Convergence threshold for the maximum absolute gradient component on any
+        particle. Default is 1e-5.
+    :param max_iter: int
+        Maximum number of BFGS optimization iterations. Default is 1000.
+    :param max_step: float
+        Maximum allowed spatial displacement per particle in a single iteration to
+        prevent numerical instability from large initial forces. Default is 0.1.
+    :param m : int
         Number of past curvature pairs (s, y) retained in history. Default is 10.
+    :param keep_steps: bool
+        If True, records and returns the trajectory of coordinates across all
+        iterations alongside the final coordinates. Default is False.
+    :returns: ndarray, shape (N, 3) or tuple of (ndarray, ndarray)
+        Returns the optimized 3D coordinates of the N particles at a local energy 
+        minimum, shape (N, 3).
+        If keep_steps is True, also returns step_list, which has shape 
+        (n_iter + 1, N, 3) and contains the coordinates at each intermediate iteration.
+    '''
 
-    Returns
-    -------
-    np.ndarray, shape (N, 3)
-        Optimized 3D coordinates of the N particles at a local energy minimum.
-    """
+    # 1: Bookkeeping
     shape = x.shape
     x = np.array(x, dtype=float).ravel()
+
+    if keep_steps:
+        step_list = [x.reshape(shape).copy()]
 
     def pot(x_flat: np.ndarray) -> float:
         return cluster_potential(x_flat.reshape(shape), potential_func)
@@ -189,11 +256,12 @@ def LBFGS(
     def grad(x_flat: np.ndarray) -> np.ndarray:
         return cluster_potential_gradient(x_flat.reshape(shape), potential_derivative_func).ravel()
 
-    H0 = 0.02
-    c1 = 1e-4
 
-    # Fixed-length ring buffers storing recent (s, y, rho) curvature pairs
-    s_hist: deque[np.ndarray] = deque(maxlen=m)
+    # 2: Defining initial parameters and history buffers
+    H0 = 0.02                                                                   #Initial inverse Hessian scaling factor
+    c1 = 1e-4                                                                   #Armijo condition constant/sufficient decrease parameter
+
+    s_hist: deque[np.ndarray] = deque(maxlen=m)                                 #Fixed-length ring buffers storing recent (s, y, rho) curvature pairs
     y_hist: deque[np.ndarray] = deque(maxlen=m)
     rho_hist: deque[float] = deque(maxlen=m)
     alpha_buf = np.empty(m, dtype=float)
@@ -201,63 +269,74 @@ def LBFGS(
     E = pot(x)
     gradx = grad(x)
 
+    n_iter = 0
+
+
+    # 3: Main loop
     for k in range(max_iter):
+        # 3.1: Checking convergence criterium
         if np.max(np.abs(gradx)) < tol:
             break
 
-        # --- Two-loop recursion to compute p = -H_k @ gradx ---
+
+        
+        # 3.2: Two-loop recursion to compute directional derivative
         q = gradx.copy()
         hist_len = len(s_hist)
 
+
+        #3.2.1: Looping backward through curvature history
         for idx in range(hist_len - 1, -1, -1):
             a = rho_hist[idx] * (s_hist[idx] @ q)
             alpha_buf[idx] = a
             q -= a * y_hist[idx]
 
-        # Dynamic Barzilai-Borwein initial Hessian scaling (falls back to H0 on step 0)
-        if hist_len > 0:
+        if hist_len > 0:                                                        #Dynamic Barzilai-Borwein initial Hessian scaling
             y_last = y_hist[-1]
             gamma = (s_hist[-1] @ y_last) / (y_last @ y_last)
             r = gamma * q
         else:
             r = H0 * q
 
+
+        #3.2.2: Looping forward through curvature history
         for idx in range(hist_len):
             beta = rho_hist[idx] * (y_hist[idx] @ r)
             r += (alpha_buf[idx] - beta) * s_hist[idx]
 
         p = -r
 
-        # Descent safeguard: wipe corrupted history and fall back to scaled steepest descent
-        if gradx @ p >= 0.0:
-            s_hist.clear()
+        if gradx @ p >= 0.0:                                                    #Resetting the search direction vector p with a scaled steepest 
+            s_hist.clear()                                                      #descent iteration if neccessary and wiping corrupted history
             y_hist.clear()
             rho_hist.clear()
             p = -H0 * gradx
 
-        # Per-atom max displacement cap
-        max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))
-        was_clamped = max_disp > max_step
+        max_disp = np.max(np.linalg.norm(p.reshape(shape), axis=-1))            #Scaling search direction vector p such that the largest displacement 
+        was_clamped = max_disp > max_step                                       #becomes max_step if neccessary
         if was_clamped:
             p *= max_step / max_disp
 
         direc_deriv = gradx @ p
 
-        # Armijo backtracking with safeguarded quadratic interpolation
+
+        # 3.4: Line search to obtain step length alpha
         alpha = 1.0
         for _ in range(20):
             s = alpha * p
             E_new = pot(x + s)
-            if E_new <= E + c1 * alpha * direc_deriv:
+            if E_new <= E + c1 * alpha * direc_deriv:                           #Checking Armijo condition (sufficient decrease in potential energy)
                 break
 
-            denom = 2.0 * (E_new - E - direc_deriv * alpha)
+            denom = 2.0 * (E_new - E - direc_deriv * alpha)                     #Applying quadratic interpolation of E(alpha) to estimate optimal step length
             if denom > 1e-14 and not was_clamped:
                 alpha_interp = -(direc_deriv * alpha * alpha) / denom
                 alpha = np.clip(alpha_interp, 0.1 * alpha, 0.5 * alpha)
-            else:
-                alpha *= 0.5
+            else:                                                               #Fallback to standard backtracking halving if quadratic interpolation is
+                alpha *= 0.5                                                    #ill-conditioned
 
+
+        # 3.5: Updating parameters and curvature history
         x += s
         E = E_new
         gradx_new = grad(x)
@@ -270,5 +349,19 @@ def LBFGS(
             rho_hist.append(1.0 / ys)
 
         gradx = gradx_new
+        n_iter += 1
+        if keep_steps:
+            step_list.append(x.reshape(shape).copy())
 
-    return x.reshape(shape)
+
+    # 4: Returning coordinates
+    if np.max(np.abs(gradx)) >= tol:
+        warnings.warn("L-BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
+    else:
+        print(f"L-BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
+
+    final_coords = x.reshape(shape)
+
+    if not keep_steps:
+        return final_coords
+    return final_coords, np.asarray(step_list, dtype=np.float64)
