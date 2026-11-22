@@ -8,6 +8,7 @@ def local_minimization_wrapper(coords: np.ndarray) -> np.ndarray:
     return FIRE(coords, pot.lennard_jones_derivative)
 
 def test_basin_hopping_finds_lj4_global_minimum():
+    np.random.seed(13)
     initial_coords = np.array([[0.0, 0.0, 0.0],
                                [1.0, 0.0, 0.0],
                                [0.5, 1.2, 0.0],
@@ -32,6 +33,12 @@ def test_basin_hopping_finds_lj4_global_minimum():
 
     # Assert that the optimized energy is close to the known global minimum
     assert np.isclose(optimized_energy, known_global_min_energy, atol=1e-2)
+
+    assert np.isclose(optimized_energy,
+                      pot.cluster_potential(optimized_coords, pot.lennard_jones_potential),
+                      atol=1e-6,
+                      rtol=0)
+
     
 def test_basin_hopping_invalid_parameters():
     initial_coords = np.array([[0.0, 0.0, 0.0],
@@ -59,6 +66,7 @@ def test_basin_hopping_invalid_parameters():
                          beta=1.0, max_iter=10, perturbation_type="random", delta=None)
     
 def test_basin_hopping_escape_local_minima_lj7_cluster():
+    np.random.seed(48)
     a = 2**(1/6) 
     initial_coords = np.array([[a, 0.0, 0.0],
                               [-a, 0.0, 0.0],
@@ -74,7 +82,7 @@ def test_basin_hopping_escape_local_minima_lj7_cluster():
 
     #parameters for BH
     beta = 1.0
-    max_iter = 200
+    max_iter = 1000
     delta = 0.5
 
     optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping(
@@ -91,5 +99,10 @@ def test_basin_hopping_escape_local_minima_lj7_cluster():
 
     assert np.isclose(local_min_energy, -15.935043, atol=1e-2)
     assert optimized_energy < local_min_energy
-    assert np.isclose(optimized_energy, known_global_min_energy, atol=1e-2)    
+    assert np.isclose(optimized_energy, known_global_min_energy, atol=1e-2)
+    assert np.isclose(optimized_energy,
+                          pot.cluster_potential(optimized_coords, pot.lennard_jones_potential),
+                          atol=1e-6,
+                          rtol=0)
+
     
