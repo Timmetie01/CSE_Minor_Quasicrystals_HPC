@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from src.main_code.global_optimizers import basin_hopping as bh
 from src.main_code import potentials_calculations as pot
-from src.main_code.local_optimizers import FIRE
+from src.main_code.local_optimizers.fire import FIRE
 
 def local_minimization_wrapper(coords: np.ndarray) -> np.ndarray:
     return FIRE(coords, pot.lennard_jones_derivative)

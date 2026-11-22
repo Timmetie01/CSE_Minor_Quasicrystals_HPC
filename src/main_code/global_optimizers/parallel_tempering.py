@@ -34,7 +34,70 @@ def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
     return
 
 
-def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, N_sweeps):
+def temps_to_rho(temps: np.ndarray) -> np.ndarray:
+    """
+    Converts temps to the differences of the logs of the temperatures.
+    """
+    dimless_temps = temps / temps[0]
+    diffs = np.diff(dimless_temps)
+    if np.any(diffs <= 0):
+        raise ValueError("Initial temperatures must be strictly increasing to compute rho.")
+    return np.log(diffs)
+
+
+def update_temp_ladder(
+    rho: np.ndarray,
+    energies: np.ndarray,
+    replica_at: np.ndarray,
+    betas: np.ndarray,
+    T_min: float,
+    k_b: float,
+    step_size: float,
+    alpha_star: float = 0.234,
+    rho_bounds: tuple[float, float] = (-10.0, 10.0),
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Updates the temperature ladder
+    :param rho: np.ndarray, shape (M - 1,),
+        Current log-differences of dimensionless temperatures.
+    :param energies: np.ndarray, shape (M,),
+        Current potential energies indexed by replica ID.
+    :param replica_at: np.ndarray, shape (M,),
+        Mapping where replica_at[t] is the replica ID currently at temperature slot t.
+    :param betas: np.ndarray, shape (M,),
+        Current betas based on temps.
+    :param T_min: float,
+        Lowest (anchor) temperature T[0].
+    :param k_b: float,
+        Boltzmann constant.
+    :param step_size: float,
+        Diminishing step size gamma.
+    :param alpha_star: float,
+        Target swap acceptance probability (default 0.234).
+    :param rho_bounds: tuple of (float, float),
+        Projection bounds [rho_min, rho_max], 2 adjacent temps can not be too close or too far from each other.
+    :returns: tuple of (rho_next, temps_next, betas_next)
+    """
+    energies_by_slot = energies[replica_at]
+
+    #Following this article: https://www.tandfonline.com/doi/pdf/10.1080/10618600.2013.778779?casa_token=fQdR02_qlfUAAAAA:Vhunb6iunboNd9cBfRa9t7
+    # Eq. 15 & 16. We take e^log(...) of the expression with pi in Eq. 15 because the Bolztmann distrubition is already e^..., so this simplifies the equation: 
+    delta_beta = betas[:-1] - betas[1:]
+    log_ratio = delta_beta * (energies_by_slot[:-1] - energies_by_slot[1:])
+    accept_prob = np.minimum(1.0, np.exp(np.minimum(0.0, log_ratio)))
+
+    # Eq. 14: 
+    H = accept_prob - alpha_star
+    rho_next = np.clip(rho + step_size * H, rho_bounds[0], rho_bounds[1])
+
+    # Eq. 13: 
+    next_dimless_temps = np.concatenate(([1.0], 1.0 + np.cumsum(np.exp(rho_next))))
+    temps_next = T_min * next_dimless_temps
+    betas_next = 1.0 / (k_b * temps_next)
+
+    return rho_next, temps_next, betas_next
+
+def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, N_sweeps, rho, T_min, potential_func):
     '''
     Runs a parallel tempering Monte Carlo simulation across M temperature replicas to search for the global minimum potential energy.
 
@@ -98,7 +161,7 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if not np.all(np.isfinite(temps_arr)) or np.any(temps_arr <= 0):
         raise ValueError("temps must contain only finite, positive values")
 
-    if np.any(np.diff(temps_arr) < 0):
+    if np.any(np.diff(temps_arr) <= 0):
         raise ValueError("temps must be ordered from lowest to highest temperature")
 
     # Validate deltas
@@ -158,7 +221,7 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
             beta = betas[j]
             delta = deltas_arr[j]
             energy, low_en, low_en_coords, num_accepted = mc_sweep(
-                coords, energy, beta, n_moves, delta, R_c, lennard_jones_potential
+                coords, energy, beta, n_moves, delta, R_c, potential_func
             )
             energies_lst[r] = energy
             if low_en < best_energy:
@@ -167,6 +230,12 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
         if (i + 1) % swap_every == 0:
             attempt_temp_swaps(M, replica_at, betas, energies_lst, attempt_count)
             attempt_count += 1
+
+            # diminishing step size gamma for temperatures updates as detailed in sec 2.4 of the paper used in update_temp_ladder
+            gamma_n = 0.5 / ((attempt_count + 5) ** 0.6)
+            rho, temps_arr, betas = update_temp_ladder(rho, energies_lst, replica_at, betas, T_min, k_b, gamma_n, alpha_star=0.234,)
+            # keep MC step sizes scaled to the updated temperatures
+            deltas_arr = make_deltas(temps_arr)
     return best_energy, best_coords
 
 def make_deltas(temps, d_ref=0.1, T_ref=0.05):
@@ -209,8 +278,8 @@ def random_cluster(N, R_start, min_dist=0.8, max_tries=10000):
             raise RuntimeError("Could not place atoms; increase R_start or lower min_dist")
     return pos
 
-def make_start(N, M, R_c):
-    """Makes the random starting setup for the PT run.
+def make_start(N, M, R_c, cluster_pot_func):
+    """Makes the random starting setup for the LJ PT run.
     :param N: int,
         Number of atoms.
     :param M: int,
@@ -223,7 +292,7 @@ def make_start(N, M, R_c):
     """
     R_start = R_c - 0.5   # start well inside the wall
     start_coords = np.array([random_cluster(N, R_start) for _ in range(M)])  # (M, N, 3)
-    start_energies = np.array([cluster_potential(c) for c in start_coords])                   # (M,)
+    start_energies = np.array([cluster_pot_func(c) for c in start_coords])                   # (M,)
     return start_energies, start_coords
 
 
@@ -238,11 +307,14 @@ if __name__ == "__main__":
     swap_every = 10
     N_sweeps = 2000
     temps = np.geomspace(0.05, 0.40, M)
+    T_min = float(temps[0])
+    rho = temps_to_rho(temps) #Seperate parameter used for updating temps to ensure they dont cross over
+
     deltas = make_deltas(temps)
-    energies, coords = make_start(N, M, R_c)
+    energies, coords = make_start(N, M, R_c, cluster_potential)
 
     t_start = time.perf_counter()
-    best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps)
+    best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps, rho, T_min, lennard_jones_potential)
     t_end = time.perf_counter()
 
     print(f"PT runtime: {t_end - t_start:.4f} s")
