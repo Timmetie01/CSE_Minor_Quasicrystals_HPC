@@ -10,7 +10,8 @@ def BFGS(
         tol: float = 1e-5, 
         max_iter: int = 1000, 
         max_step:float = 0.1, 
-        keep_steps: bool = False
+        keep_steps: bool = False,
+        print_convergence = True
         ):
     
     '''
@@ -137,9 +138,9 @@ def BFGS(
 
 
     # 4: Returning coordinates
-    if np.max(np.abs(gradx)) >= tol:
+    if print_convergence and np.max(np.abs(gradx)) >= tol:
         warnings.warn("BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
-    else:
+    elif print_convergence:
         print(f"BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
 
     final_coords = x.reshape(shape)
@@ -206,7 +207,8 @@ def LBFGS(
     max_iter: int = 1000,
     max_step: float = 0.1,
     m: int = 10,
-    keep_steps: bool = False
+    keep_steps: bool = False,
+    print_convergence = True
     ):
 
     '''
@@ -355,9 +357,9 @@ def LBFGS(
 
 
     # 4: Returning coordinates
-    if np.max(np.abs(gradx)) >= tol:
+    if print_convergence and np.max(np.abs(gradx)) >= tol:
         warnings.warn("L-BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
-    else:
+    elif print_convergence:
         print(f"L-BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
 
     final_coords = x.reshape(shape)
