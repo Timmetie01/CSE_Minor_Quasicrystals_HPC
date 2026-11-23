@@ -9,6 +9,11 @@ DATA_DIR = REPO_ROOT / "data"
 WALES_DIR = DATA_DIR / "LJ_data_wales"
 RECORDS_DIR = DATA_DIR / "records"
 
+#The following constants define which methods and potentials are allowed in the folder structure.
+#These sets are imported throughout the project and tests, so only change when really necessary.
+ALLOWED_POTENTIALS = {"LJ", "OP", "raw_OP"}
+ALLOWED_METHODS = {"basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing", "pure_lbfgs"}
+
 def transform_LJwales_to_numpy():
     '''
     Reads the txt-like files from https://www-wales.ch.cam.ac.uk/~wales/CCD/jon/structures/LJ/tables.150.html and saves them as numpy arrays for easier access. No need to run, since this has been done once.
@@ -103,7 +108,7 @@ def highscores(
         The newly obtained minimum to be compared to previously calculated local/global minima.
     :param literal, "basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering"or "simulated_annealing" method_str:
         The global optimizer used for generating the minima. Must be given to ensure proper logging.
-    :param literal, "LJ" or "OP" potential_str:
+    :param literal, "LJ" or "OP", "raw_OP" potential_str:
         Specifies the potential type for which the minimum was found. Either Lennard-Jones or Oscillating Pair
     :param tuple, (epsilon, sigma) or (frequency, phase shift) potential_parameters:
         The parameters of the potential for which the minimum was found. For Lennard-Jones (1,1) is standard, for Oscillating Pair the parameters are more important
@@ -132,8 +137,8 @@ def highscores(
     extra_info = " ".join(extra_info.splitlines())
 
     method_str = method_str.lower()
-    if method_str not in ["basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing", "pure_lbfgs"]:
-        raise ValueError(f'The method_str should be one of the following: "basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing" or "pure_lbfgs", but got {method_str}')
+    if method_str not in ALLOWED_METHODS:
+        raise ValueError(f'The method_str should be one of the following: {ALLOWED_METHODS}, but got {method_str}')
 
     #Base folder for this potential and the parameter pair
     param_dir = RECORDS_DIR / potential_tag / param_tag
@@ -229,6 +234,35 @@ def highscores(
 
     return broke_overall, broke_method, first_ever_overall, first_ever_method, broke_wales
 
+
+def read_database(n_atoms, potential_str, potential_parameters, method_str=None):
+    '''
+    Reads the atom coordinate array from the database.
+
+    :param int n_atoms:
+        The atom count for which the array should be loaded
+    :param str potential_str:
+        A string describing the potential type, should be in ALLOWED_POTENTIALS
+    :param tuple potential_parameters:
+        A tuple for the parameters of the potential function, such as epsilon and sigma for Lennard-Jones
+    :param str, default=None method_str:
+        If None, loads the overall best values. If it is one of the allowed methods, it will only consider the records for that specific method.
+    :returns np.ndarray:
+        The coordinates which are our current best guess at a global minimum for the above parameters.
+    '''
+
+    if potential_str not in ALLOWED_POTENTIALS:
+        raise ValueError(f"Choose allowed potential type, it was {potential_str}.")
+    if method_str != None and method_str not in ALLOWED_METHODS:
+        raise ValueError(f"Choose allowed method. It should be None for overall, or otherwise an allowed method, it was {method_str}.")
+
+    param_tag = "_".join(str(float(p)) for p in potential_parameters)
+    potential_tag = f"{potential_str.upper()}"
+
+    if method_str == None:
+        return np.load(RECORDS_DIR / potential_tag / param_tag / "overall" / f"{n_atoms}.npy")
+    else:
+        return np.load(RECORDS_DIR / potential_tag / param_tag / "methods" / method_str / f"{n_atoms}.npy")
 
 
 if __name__ == "__main__":

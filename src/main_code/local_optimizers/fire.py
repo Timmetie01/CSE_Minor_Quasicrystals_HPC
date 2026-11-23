@@ -103,6 +103,8 @@ def FIRE(coords: np.ndarray, potential_derivative_func: Callable, keep_steps: bo
     if i == Nmax:
         raise RuntimeWarning("FIRE optimizer reached its max iteration count without converging, returning non-optimal coordinates...")
 
+    if keep_steps:
+        return coords, step_arr
     return coords
 
 def validate_fire_data(coords: np.ndarray, potential_derivative_func: Callable,
