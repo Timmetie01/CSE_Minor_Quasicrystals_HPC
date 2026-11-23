@@ -186,11 +186,15 @@ def train_ml_model(coords: np.ndarray, current_energy: float,
     
     for _ in range(n_samples):
         candidate = random_perturbation(coords, delta)
-        
+    
         features = calculate_features(coords, candidate, potential_function, current_energy)
         X.append(features)
         
-        y.append(1 if candidate_energy < current_energy else 0)
+        opt_coords = local_optimizer_wrapper(candidate)
+        opt_energy = pot.cluster_potential(opt_coords, potential_function)
+        
+        # CHANGE THIS (LOSS OF INFORMATION)
+        y.append(1 if opt_energy < current_energy else 0)
 
     return np.array(X), np.array(y)
 
@@ -202,11 +206,14 @@ def ml_basin_hopping(input_coords: np.ndarray, potential_function: Callable,
     '''
     # add checks
     
-    coords = local_optimizer_wrapper(input_coords)
+    coords = np.array(input_coords, dtype=float, copy=True)
+    coords = local_optimizer_wrapper(coords)
+    
     energy = pot.cluster_potential(coords, potential_function)
     
-    X, y = train_ml_model(coords, energy, potential_function, local_optimizer_wrapper, delta, n_samples)
+    X, y = train_ml_model(coords, energy, potential_function, local_optimizer_wrapper, delta, n_candidates)
     
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    
     model.fit(X, y)
     
