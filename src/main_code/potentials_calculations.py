@@ -145,16 +145,9 @@ def single_atom_potential(coords: np.ndarray, idx: int, potential_func=lennard_j
         Function to calculate the potential between two particles.
     :returns: float,
         Total potential of all other atoms with atom number idx.
-    :raises ValueError: 
-        if the input coordinates are not a 2D array with shape (N, 3).
-    :raises RuntimeWarning:
-        if any two particles are at the same position, resulting in a distance of zero.
     '''
 
-    #Enforce that the input coordinates are a 2D array with shape (N, 3)
     coords = np.asarray(coords)
-    if coords.ndim != 2 or coords.shape[1] != 3:
-        raise ValueError("Coordinates must be a 2D array with shape (N, 3).")
     diff = coords - coords[idx]
     dist = np.sqrt(np.sum(diff * diff, axis=1))
     return float(np.sum(potential_func(dist[dist>0]))) #Dont include the 0 distance from idx with itself
