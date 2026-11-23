@@ -1,153 +1,112 @@
-23-11-2026 11:56:09  | N=   5 | LJ_1.0_1.0         | E = -9.1038524157 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=   6 | LJ_1.0_1.0         | E = -12.3029275296 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=   7 | LJ_1.0_1.0         | E = -16.5053841680 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=   8 | LJ_1.0_1.0         | E = -19.8214891922 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=   9 | LJ_1.0_1.0         | E = -23.1731582749 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  10 | LJ_1.0_1.0         | E = -26.6233197719 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  11 | LJ_1.0_1.0         | E = -31.4269154769 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  12 | LJ_1.0_1.0         | E = -37.9675995624 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  13 | LJ_1.0_1.0         | E = -40.7585134840 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  14 | LJ_1.0_1.0         | E = -47.8451567826 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  15 | LJ_1.0_1.0         | E = -52.3226272618 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  16 | LJ_1.0_1.0         | E = -55.3453792744 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  17 | LJ_1.0_1.0         | E = -61.3071460816 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  18 | LJ_1.0_1.0         | E = -64.1319368903 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  19 | LJ_1.0_1.0         | E = -68.9717874212 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  20 | LJ_1.0_1.0         | E = -72.5644858502 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  21 | LJ_1.0_1.0         | E = -80.8477817355 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  22 | LJ_1.0_1.0         | E = -83.3819217088 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  23 | LJ_1.0_1.0         | E = -91.3277737829 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  24 | LJ_1.0_1.0         | E = -94.2246710924 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  25 | LJ_1.0_1.0         | E = -99.2832774236 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  26 | LJ_1.0_1.0         | E = -103.2203391015 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  27 | LJ_1.0_1.0         | E = -111.5531714812 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:09  | N=  28 | LJ_1.0_1.0         | E = -114.1739743767 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  29 | LJ_1.0_1.0         | E = -119.6582327486 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  30 | LJ_1.0_1.0         | E = -125.3143447220 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  31 | LJ_1.0_1.0         | E = -131.2918540288 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  32 | LJ_1.0_1.0         | E = -137.2454994364 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  33 | LJ_1.0_1.0         | E = -141.8456820883 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  34 | LJ_1.0_1.0         | E = -146.0525725092 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  35 | LJ_1.0_1.0         | E = -150.7941893192 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  36 | LJ_1.0_1.0         | E = -156.4623926391 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  37 | LJ_1.0_1.0         | E = -164.6127341754 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  38 | LJ_1.0_1.0         | E = -168.4283854372 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:10  | N=  39 | LJ_1.0_1.0         | E = -174.9999336117 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  40 | LJ_1.0_1.0         | E = -180.6277260245 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  41 | LJ_1.0_1.0         | E = -187.4249669742 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  42 | LJ_1.0_1.0         | E = -187.9407797493 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  43 | LJ_1.0_1.0         | E = -196.5014250949 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  44 | LJ_1.0_1.0         | E = -201.7995047471 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  45 | LJ_1.0_1.0         | E = -205.5511115391 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  46 | LJ_1.0_1.0         | E = -212.1665494113 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  47 | LJ_1.0_1.0         | E = -216.0321231398 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:11  | N=  48 | LJ_1.0_1.0         | E = -223.1717174259 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  49 | LJ_1.0_1.0         | E = -229.9330018337 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  50 | LJ_1.0_1.0         | E = -237.3275616089 | method = pure_lbfgs           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=   9 | LJ_1.0_1.0         | E = -23.1969536088 | prev = -23.1731582749 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  10 | LJ_1.0_1.0         | E = -27.2139354399 | prev = -26.6233197719 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  13 | LJ_1.0_1.0         | E = -41.4719798478 | prev = -40.7585134840 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  18 | LJ_1.0_1.0         | E = -64.9417487828 | prev = -64.1319368903 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  22 | LJ_1.0_1.0         | E = -86.8097822593 | prev = -83.3819217088 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:12  | N=  23 | LJ_1.0_1.0         | E = -92.8444724283 | prev = -91.3277737829 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  26 | LJ_1.0_1.0         | E = -105.7007387967 | prev = -103.2203391015 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  28 | LJ_1.0_1.0         | E = -117.7779605499 | prev = -114.1739743767 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  29 | LJ_1.0_1.0         | E = -121.8108785879 | prev = -119.6582327486 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  30 | LJ_1.0_1.0         | E = -125.4154551333 | prev = -125.3143447220 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  34 | LJ_1.0_1.0         | E = -147.5538522673 | prev = -146.0525725092 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  35 | LJ_1.0_1.0         | E = -153.1624912160 | prev = -150.7941893192 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:13  | N=  36 | LJ_1.0_1.0         | E = -160.0394090197 | prev = -156.4623926391 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:14  | N=  38 | LJ_1.0_1.0         | E = -168.9698540586 | prev = -168.4283854372 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:14  | N=  42 | LJ_1.0_1.0         | E = -189.2625166235 | prev = -187.9407797493 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:14  | N=  43 | LJ_1.0_1.0         | E = -198.2596837183 | prev = -196.5014250949 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:14  | N=  45 | LJ_1.0_1.0         | E = -207.7017290229 | prev = -205.5511115391 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:56:15  | N=  46 | LJ_1.0_1.0         | E = -213.4159920007 | prev = -212.1665494113 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  10 | LJ_1.0_1.0         | E = -27.5558630379 | prev = -27.2139354399 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  13 | LJ_1.0_1.0         | E = -44.3268014195 | prev = -41.4719798478 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  18 | LJ_1.0_1.0         | E = -65.8423091551 | prev = -64.9417487828 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  19 | LJ_1.0_1.0         | E = -70.7256597335 | prev = -68.9717874212 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  21 | LJ_1.0_1.0         | E = -81.6514656016 | prev = -80.8477817355 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:57  | N=  24 | LJ_1.0_1.0         | E = -94.6303657157 | prev = -94.2246710924 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:58  | N=  29 | LJ_1.0_1.0         | E = -122.2725356157 | prev = -121.8108785879 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:58  | N=  31 | LJ_1.0_1.0         | E = -131.5288786848 | prev = -131.2918540288 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:58  | N=  33 | LJ_1.0_1.0         | E = -142.4069807614 | prev = -141.8456820883 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:59  | N=  40 | LJ_1.0_1.0         | E = -180.8234762260 | prev = -180.6277260245 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:59  | N=  42 | LJ_1.0_1.0         | E = -190.3561765664 | prev = -189.2625166235 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:59  | N=  45 | LJ_1.0_1.0         | E = -209.9605321935 | prev = -207.7017290229 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  47 | LJ_1.0_1.0         | E = -220.1692655629 | prev = -216.0321231398 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  48 | LJ_1.0_1.0         | E = -226.6728531314 | prev = -223.1717174259 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  50 | LJ_1.0_1.0         | E = -240.0812993276 | prev = -237.3275616089 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  19 | LJ_1.0_1.0         | E = -70.8187080065 | prev = -70.7256597335 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  20 | LJ_1.0_1.0         | E = -73.2647864439 | prev = -72.5644858502 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:00  | N=  25 | LJ_1.0_1.0         | E = -101.8672353797 | prev = -99.2832774236 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:01  | N=  30 | LJ_1.0_1.0         | E = -126.2590736849 | prev = -125.4154551333 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:01  | N=  31 | LJ_1.0_1.0         | E = -132.1912386461 | prev = -131.5288786848 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:01  | N=  38 | LJ_1.0_1.0         | E = -169.0025151422 | prev = -168.9698540586 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:02  | N=  49 | LJ_1.0_1.0         | E = -231.0164799986 | prev = -229.9330018337 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:03  | N=  10 | LJ_1.0_1.0         | E = -28.4225318934 | prev = -27.5558630379 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:03  | N=  11 | LJ_1.0_1.0         | E = -32.7659700900 | prev = -31.4269154769 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:03  | N=  17 | LJ_1.0_1.0         | E = -61.3179946601 | prev = -61.3071460816 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:04  | N=  38 | LJ_1.0_1.0         | E = -169.0396652941 | prev = -169.0025151422 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:05  | N=  47 | LJ_1.0_1.0         | E = -223.1738131818 | prev = -220.1692655629 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:05  | N=  20 | LJ_1.0_1.0         | E = -75.3347495769 | prev = -73.2647864439 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:06  | N=  34 | LJ_1.0_1.0         | E = -148.0209797113 | prev = -147.5538522673 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:06  | N=  35 | LJ_1.0_1.0         | E = -153.1937463587 | prev = -153.1624912160 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:08  | N=  19 | LJ_1.0_1.0         | E = -71.0827418495 | prev = -70.8187080065 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:08  | N=  24 | LJ_1.0_1.0         | E = -94.6544322769 | prev = -94.6303657157 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:08  | N=  31 | LJ_1.0_1.0         | E = -132.3460330420 | prev = -132.1912386461 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:09  | N=  35 | LJ_1.0_1.0         | E = -154.7428406972 | prev = -153.1937463587 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:09  | N=  39 | LJ_1.0_1.0         | E = -175.9529099202 | prev = -174.9999336117 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:10  | N=  18 | LJ_1.0_1.0         | E = -66.5309494631 | prev = -65.8423091551 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:10  | N=  20 | LJ_1.0_1.0         | E = -76.2999007702 | prev = -75.3347495769 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:11  | N=  24 | LJ_1.0_1.0         | E = -95.6467318820 | prev = -94.6544322769 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:11  | N=  33 | LJ_1.0_1.0         | E = -144.7148846320 | prev = -142.4069807614 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:11  | N=  38 | LJ_1.0_1.0         | E = -169.7818134545 | prev = -169.0396652941 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:13  | N=   9 | LJ_1.0_1.0         | E = -24.1133604336 | prev = -23.1969536088 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:13  | N=  25 | LJ_1.0_1.0         | E = -102.3726631996 | prev = -101.8672353797 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:14  | N=  42 | LJ_1.0_1.0         | E = -191.3622175266 | prev = -190.3561765664 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:15  | N=  50 | LJ_1.0_1.0         | E = -242.7627359969 | prev = -240.0812993276 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:15  | N=  16 | LJ_1.0_1.0         | E = -55.5593392763 | prev = -55.3453792744 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:16  | N=  27 | LJ_1.0_1.0         | E = -112.8255175547 | prev = -111.5531714812 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:16  | N=  29 | LJ_1.0_1.0         | E = -122.2958167885 | prev = -122.2725356157 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:16  | N=  34 | LJ_1.0_1.0         | E = -148.8613652165 | prev = -148.0209797113 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:16  | N=  39 | LJ_1.0_1.0         | E = -176.1664062073 | prev = -175.9529099202 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:17  | N=  44 | LJ_1.0_1.0         | E = -202.9995710643 | prev = -201.7995047471 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:20  | N=  48 | LJ_1.0_1.0         | E = -226.9941515726 | prev = -226.6728531314 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:20  | N=  24 | LJ_1.0_1.0         | E = -96.1464293587 | prev = -95.6467318820 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:20  | N=  26 | LJ_1.0_1.0         | E = -106.0095793829 | prev = -105.7007387967 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:21  | N=  43 | LJ_1.0_1.0         | E = -200.7010722942 | prev = -198.2596837183 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 12:00:22  | N=  46 | LJ_1.0_1.0         | E = -214.7373215189 | prev = -213.4159920007 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  10 | LJ_1.0_1.0         | E = -27.4797389065 | prev = -27.2139354399 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  18 | LJ_1.0_1.0         | E = -66.2845681258 | prev = -64.9417487828 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  19 | LJ_1.0_1.0         | E = -70.8187080066 | prev = -68.9717874212 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  20 | LJ_1.0_1.0         | E = -75.6004366914 | prev = -72.5644858502 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  24 | LJ_1.0_1.0         | E = -95.8480789208 | prev = -94.2246710924 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:22  | N=  25 | LJ_1.0_1.0         | E = -99.2978703488 | prev = -99.2832774236 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:23  | N=  42 | LJ_1.0_1.0         | E = -189.9050411362 | prev = -189.2625166235 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:24  | N=  47 | LJ_1.0_1.0         | E = -216.9289315785 | prev = -216.0321231398 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:24  | N=  48 | LJ_1.0_1.0         | E = -224.6528978446 | prev = -223.1717174259 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:24  | N=  10 | LJ_1.0_1.0         | E = -27.5558630379 | prev = -27.4797389065 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:25  | N=  29 | LJ_1.0_1.0         | E = -122.2958167885 | prev = -121.8108785879 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:25  | N=  30 | LJ_1.0_1.0         | E = -125.7123463310 | prev = -125.4154551333 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:25  | N=  33 | LJ_1.0_1.0         | E = -142.7983216365 | prev = -141.8456820883 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:25  | N=  34 | LJ_1.0_1.0         | E = -148.3667695287 | prev = -147.5538522673 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:25  | N=  38 | LJ_1.0_1.0         | E = -169.0623828004 | prev = -168.9698540586 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:26  | N=  42 | LJ_1.0_1.0         | E = -192.1550607038 | prev = -189.9050411362 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:26  | N=  44 | LJ_1.0_1.0         | E = -202.2668018703 | prev = -201.7995047471 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:26  | N=  47 | LJ_1.0_1.0         | E = -217.9448386840 | prev = -216.9289315785 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:26  | N=  48 | LJ_1.0_1.0         | E = -228.2658065303 | prev = -224.6528978446 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:26  | N=  49 | LJ_1.0_1.0         | E = -236.3373501538 | prev = -229.9330018337 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:27  | N=  11 | LJ_1.0_1.0         | E = -32.7659700900 | prev = -31.4269154769 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:27  | N=  13 | LJ_1.0_1.0         | E = -44.3268014195 | prev = -41.4719798478 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:27  | N=  24 | LJ_1.0_1.0         | E = -97.3488151180 | prev = -95.8480789208 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:27  | N=  29 | LJ_1.0_1.0         | E = -122.4287326161 | prev = -122.2958167885 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:27  | N=  31 | LJ_1.0_1.0         | E = -132.0590865059 | prev = -131.2918540288 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:28  | N=  37 | LJ_1.0_1.0         | E = -165.2504840832 | prev = -164.6127341754 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:29  | N=   9 | LJ_1.0_1.0         | E = -24.1133604336 | prev = -23.1969536088 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:29  | N=  19 | LJ_1.0_1.0         | E = -72.6597824544 | prev = -70.8187080066 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:30  | N=  30 | LJ_1.0_1.0         | E = -127.5253950886 | prev = -125.7123463310 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:31  | N=  16 | LJ_1.0_1.0         | E = -56.8157417804 | prev = -55.3453792744 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:31  | N=  17 | LJ_1.0_1.0         | E = -61.3179946601 | prev = -61.3071460816 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:31  | N=  20 | LJ_1.0_1.0         | E = -75.6384049546 | prev = -75.6004366914 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:32  | N=  35 | LJ_1.0_1.0         | E = -153.6792129627 | prev = -153.1624912160 |      METHOD BEST       | Initial highscores function testing, using LBFGS
-23-11-2026 11:59:32  | N=  39 | LJ_1.0_1.0         | E = -175.2424879047 | prev = -174.9999336117 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=   5 | LJ_1.0_1.0         | E =      -9.1038524157 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=   6 | LJ_1.0_1.0         | E =     -12.3029275296 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=   7 | LJ_1.0_1.0         | E =     -15.5932109382 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=   8 | LJ_1.0_1.0         | E =     -19.7652978509 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=   9 | LJ_1.0_1.0         | E =     -23.1707600219 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  10 | LJ_1.0_1.0         | E =     -27.5452068523 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  11 | LJ_1.0_1.0         | E =     -31.5004653375 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  12 | LJ_1.0_1.0         | E =     -37.9675995624 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  13 | LJ_1.0_1.0         | E =     -44.3268014195 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  14 | LJ_1.0_1.0         | E =     -45.0302423454 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  15 | LJ_1.0_1.0         | E =     -52.3226272618 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  16 | LJ_1.0_1.0         | E =     -55.3453792744 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  17 | LJ_1.0_1.0         | E =     -60.3973815137 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  18 | LJ_1.0_1.0         | E =     -64.0580729806 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  19 | LJ_1.0_1.0         | E =     -69.8790338598 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  20 | LJ_1.0_1.0         | E =     -75.5892891691 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  21 | LJ_1.0_1.0         | E =     -76.9075982091 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  22 | LJ_1.0_1.0         | E =     -83.2918828184 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:08  | N=  23 | LJ_1.0_1.0         | E =     -90.7330513019 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  24 | LJ_1.0_1.0         | E =     -94.1549194061 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  25 | LJ_1.0_1.0         | E =    -101.8672353797 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  26 | LJ_1.0_1.0         | E =    -103.2939932834 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  27 | LJ_1.0_1.0         | E =    -110.3958233460 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  28 | LJ_1.0_1.0         | E =    -114.7884688735 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  29 | LJ_1.0_1.0         | E =    -118.2944004653 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  30 | LJ_1.0_1.0         | E =    -123.6000158707 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  31 | LJ_1.0_1.0         | E =    -129.5812100213 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  32 | LJ_1.0_1.0         | E =    -136.6132705747 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:09  | N=  33 | LJ_1.0_1.0         | E =    -142.0217742627 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  34 | LJ_1.0_1.0         | E =    -144.2128525784 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  35 | LJ_1.0_1.0         | E =    -149.9988424892 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  36 | LJ_1.0_1.0         | E =    -155.6533451665 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  37 | LJ_1.0_1.0         | E =    -163.2574123835 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  38 | LJ_1.0_1.0         | E =    -166.9110039622 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:10  | N=  39 | LJ_1.0_1.0         | E =    -176.1675272149 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  40 | LJ_1.0_1.0         | E =    -178.0581681373 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  41 | LJ_1.0_1.0         | E =    -183.7994995791 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  42 | LJ_1.0_1.0         | E =    -190.3240253787 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  43 | LJ_1.0_1.0         | E =    -195.5949349454 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  44 | LJ_1.0_1.0         | E =    -198.1610115320 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:11  | N=  45 | LJ_1.0_1.0         | E =    -205.4893556974 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:12  | N=  46 | LJ_1.0_1.0         | E =    -212.7584286271 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:12  | N=  47 | LJ_1.0_1.0         | E =    -217.0731733078 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:12  | N=  48 | LJ_1.0_1.0         | E =    -224.4444858155 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:12  | N=  49 | LJ_1.0_1.0         | E =    -226.2979027850 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  50 | LJ_1.0_1.0         | E =    -243.8352272435 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=   6 | LJ_1.0_1.0         | E =     -12.7120622568 | method = pure_lbfgs           | prev =     -12.3029275296 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=   7 | LJ_1.0_1.0         | E =     -15.9350430605 | method = pure_lbfgs           | prev =     -15.5932109382 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=   9 | LJ_1.0_1.0         | E =     -23.1731582749 | method = pure_lbfgs           | prev =     -23.1707600219 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  10 | LJ_1.0_1.0         | E =     -28.4225318934 | method = pure_lbfgs           | prev =     -27.5452068523 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  11 | LJ_1.0_1.0         | E =     -32.7659700900 | method = pure_lbfgs           | prev =     -31.5004653375 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  14 | LJ_1.0_1.0         | E =     -47.8451567826 | method = pure_lbfgs           | prev =     -45.0302423454 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  16 | LJ_1.0_1.0         | E =     -56.8157417804 | method = pure_lbfgs           | prev =     -55.3453792744 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  21 | LJ_1.0_1.0         | E =     -81.6514656016 | method = pure_lbfgs           | prev =     -76.9075982091 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:13  | N=  22 | LJ_1.0_1.0         | E =     -86.0326424591 | method = pure_lbfgs           | prev =     -83.2918828184 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  26 | LJ_1.0_1.0         | E =    -103.9292074854 | method = pure_lbfgs           | prev =    -103.2939932834 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  27 | LJ_1.0_1.0         | E =    -111.2560546914 | method = pure_lbfgs           | prev =    -110.3958233460 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  28 | LJ_1.0_1.0         | E =    -114.9316863021 | method = pure_lbfgs           | prev =    -114.7884688735 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  29 | LJ_1.0_1.0         | E =    -120.2452335760 | method = pure_lbfgs           | prev =    -118.2944004653 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  30 | LJ_1.0_1.0         | E =    -126.4587060337 | method = pure_lbfgs           | prev =    -123.6000158707 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:14  | N=  31 | LJ_1.0_1.0         | E =    -130.1345052030 | method = pure_lbfgs           | prev =    -129.5812100213 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:15  | N=  34 | LJ_1.0_1.0         | E =    -147.2391253829 | method = pure_lbfgs           | prev =    -144.2128525784 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:15  | N=  35 | LJ_1.0_1.0         | E =    -153.0702981291 | method = pure_lbfgs           | prev =    -149.9988424892 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:15  | N=  36 | LJ_1.0_1.0         | E =    -159.0427374014 | method = pure_lbfgs           | prev =    -155.6533451665 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:15  | N=  38 | LJ_1.0_1.0         | E =    -167.1098403764 | method = pure_lbfgs           | prev =    -166.9110039622 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:16  | N=  40 | LJ_1.0_1.0         | E =    -179.0272952622 | method = pure_lbfgs           | prev =    -178.0581681373 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:16  | N=  42 | LJ_1.0_1.0         | E =    -191.7236577695 | method = pure_lbfgs           | prev =    -190.3240253787 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:16  | N=  44 | LJ_1.0_1.0         | E =    -199.3947412369 | method = pure_lbfgs           | prev =    -198.1610115320 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:17  | N=  45 | LJ_1.0_1.0         | E =    -206.3209599857 | method = pure_lbfgs           | prev =    -205.4893556974 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:17  | N=  47 | LJ_1.0_1.0         | E =    -219.4051503537 | method = pure_lbfgs           | prev =    -217.0731733078 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=  49 | LJ_1.0_1.0         | E =    -227.2570442539 | method = pure_lbfgs           | prev =    -226.2979027850 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=   7 | LJ_1.0_1.0         | E =     -16.5053841680 | method = pure_lbfgs           | prev =     -15.9350430605 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=   8 | LJ_1.0_1.0         | E =     -19.8214891922 | method = pure_lbfgs           | prev =     -19.7652978509 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=   9 | LJ_1.0_1.0         | E =     -24.1133604336 | method = pure_lbfgs           | prev =     -23.1731582749 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=  18 | LJ_1.0_1.0         | E =     -65.8423091551 | method = pure_lbfgs           | prev =     -64.0580729806 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:18  | N=  20 | LJ_1.0_1.0         | E =     -75.6384049546 | method = pure_lbfgs           | prev =     -75.5892891691 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:19  | N=  24 | LJ_1.0_1.0         | E =     -94.9900250422 | method = pure_lbfgs           | prev =     -94.1549194061 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:19  | N=  26 | LJ_1.0_1.0         | E =    -104.1763309205 | method = pure_lbfgs           | prev =    -103.9292074854 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:19  | N=  33 | LJ_1.0_1.0         | E =    -142.7491471807 | method = pure_lbfgs           | prev =    -142.0217742627 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:20  | N=  38 | LJ_1.0_1.0         | E =    -170.2748497154 | method = pure_lbfgs           | prev =    -167.1098403764 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:20  | N=  40 | LJ_1.0_1.0         | E =    -180.5589367760 | method = pure_lbfgs           | prev =    -179.0272952622 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:23  | N=  30 | LJ_1.0_1.0         | E =    -127.8474465482 | method = pure_lbfgs           | prev =    -126.4587060337 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:24  | N=  41 | LJ_1.0_1.0         | E =    -185.9355541448 | method = pure_lbfgs           | prev =    -183.7994995791 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:24  | N=  43 | LJ_1.0_1.0         | E =    -197.6248176640 | method = pure_lbfgs           | prev =    -195.5949349454 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:25  | N=  44 | LJ_1.0_1.0         | E =    -202.1313203757 | method = pure_lbfgs           | prev =    -199.3947412369 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:25  | N=  49 | LJ_1.0_1.0         | E =    -227.9840083740 | method = pure_lbfgs           | prev =    -227.2570442539 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:26  | N=  17 | LJ_1.0_1.0         | E =     -61.3179946601 | method = pure_lbfgs           | prev =     -60.3973815137 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:26  | N=  23 | LJ_1.0_1.0         | E =     -91.3680340365 | method = pure_lbfgs           | prev =     -90.7330513019 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:26  | N=  26 | LJ_1.0_1.0         | E =    -104.1997455355 | method = pure_lbfgs           | prev =    -104.1763309205 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:26  | N=  27 | LJ_1.0_1.0         | E =    -111.5905240403 | method = pure_lbfgs           | prev =    -111.2560546914 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:27  | N=  29 | LJ_1.0_1.0         | E =    -120.7285440063 | method = pure_lbfgs           | prev =    -120.2452335760 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:27  | N=  33 | LJ_1.0_1.0         | E =    -143.5829257160 | method = pure_lbfgs           | prev =    -142.7491471807 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:27  | N=  34 | LJ_1.0_1.0         | E =    -148.4847721513 | method = pure_lbfgs           | prev =    -147.2391253829 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:27  | N=  37 | LJ_1.0_1.0         | E =    -164.8879734709 | method = pure_lbfgs           | prev =    -163.2574123835 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:29  | N=  45 | LJ_1.0_1.0         | E =    -208.4534424964 | method = pure_lbfgs           | prev =    -206.3209599857 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:29  | N=  49 | LJ_1.0_1.0         | E =    -228.2278274203 | method = pure_lbfgs           | prev =    -227.9840083740 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:30  | N=  28 | LJ_1.0_1.0         | E =    -116.8700499805 | method = pure_lbfgs           | prev =    -114.9316863021 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:31  | N=  32 | LJ_1.0_1.0         | E =    -136.7538953455 | method = pure_lbfgs           | prev =    -136.6132705747 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:32  | N=  46 | LJ_1.0_1.0         | E =    -213.9956928030 | method = pure_lbfgs           | prev =    -212.7584286271 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:33  | N=  48 | LJ_1.0_1.0         | E =    -226.3227743109 | method = pure_lbfgs           | prev =    -224.4444858155 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:33  | N=  49 | LJ_1.0_1.0         | E =    -230.6408877783 | method = pure_lbfgs           | prev =    -228.2278274203 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:34  | N=  19 | LJ_1.0_1.0         | E =     -72.6597824544 | method = pure_lbfgs           | prev =     -69.8790338598 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:34  | N=  26 | LJ_1.0_1.0         | E =    -106.3022359271 | method = pure_lbfgs           | prev =    -104.1997455355 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:34  | N=  29 | LJ_1.0_1.0         | E =    -120.7835636811 | method = pure_lbfgs           | prev =    -120.7285440063 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:35  | N=  34 | LJ_1.0_1.0         | E =    -149.5964916061 | method = pure_lbfgs           | prev =    -148.4847721513 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:36  | N=  45 | LJ_1.0_1.0         | E =    -208.5622498344 | method = pure_lbfgs           | prev =    -208.4534424964 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:37  | N=  22 | LJ_1.0_1.0         | E =     -86.1400257494 | method = pure_lbfgs           | prev =     -86.0326424591 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:38  | N=  31 | LJ_1.0_1.0         | E =    -130.2150561097 | method = pure_lbfgs           | prev =    -130.1345052030 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:41  | N=  26 | LJ_1.0_1.0         | E =    -106.9985378724 | method = pure_lbfgs           | prev =    -106.3022359271 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:45  | N=  29 | LJ_1.0_1.0         | E =    -121.2976225134 | method = pure_lbfgs           | prev =    -120.7835636811 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:46  | N=  38 | LJ_1.0_1.0         | E =    -170.4747193214 | method = pure_lbfgs           | prev =    -170.2748497154 |      METHOD BEST       | Initial highscores function testing, using LBFGS
+23-11-2026 12:21:47  | N=  46 | LJ_1.0_1.0         | E =    -214.4651554602 | method = pure_lbfgs           | prev =    -213.9956928030 |      METHOD BEST       | Initial highscores function testing, using LBFGS

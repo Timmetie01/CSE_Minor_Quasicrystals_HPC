@@ -43,13 +43,17 @@ def read_LJwales_data(atom_count:int):
 def get_potential_func(potential_str: str, potential_parameters: tuple):
     """Build and return the potential energy function for 'LJ' or 'OP', based on information passed to the highscores function."""
     if potential_str.upper() == "LJ":
+        if len(potential_parameters) != 2:
+            raise ValueError("The Lennard-Jones potential should get 2 parameters")
         return make_lennard_jones_potential(potential_parameters[0], potential_parameters[1])
     if potential_str.upper() == "OP":
+        if len(potential_parameters) != 2:
+            raise ValueError("The Oscillating-Pair potential should get 2 parameters")
         return make_oscillating_pair_potential(potential_parameters[0], potential_parameters[1])
     raise ValueError("Choose either 'LJ' (Lennard-Jones) or 'OP' (Oscillating Pair) potential.")
 
 
-def append_log(log_path: str, line: str) -> None:
+def append_log(log_path: str, line: str):
     """Append a single line to a chronological log file.
     Creates parent folders if needed."""
     parent = os.path.dirname(log_path)
@@ -60,7 +64,7 @@ def append_log(log_path: str, line: str) -> None:
         file.write(line + "\n")
 
 
-def update_atom_count_log(log_path: str, atom_count: int, line: str) -> None:
+def update_atom_count_log(log_path: str, atom_count: int, line: str):
     """Write 'line' at line number 'atom_count' (starting from one). 
     Adds earlier lines if needed. Used for atom-count ordered log file."""
     parent = os.path.dirname(log_path)
@@ -108,7 +112,7 @@ def highscores(
     :param float, default=1e-12 tol:
         The difference by which a new minimum must beat an old minimum to be counted. To avoid floating-point error playing a significant role.
     :return tuple \(bool, bool, bool, bool\):
-        In the following order: (global record broken, method's record broken, first overall try, first method's try)
+        In the following order: (global record broken, method's record broken, first overall try, first method's try, Wales record broken)
     '''
 
     coords = np.asarray(new_data, dtype=np.float64)
@@ -154,6 +158,7 @@ def highscores(
     first_ever_method = prev_method_energy is None
     broke_method = (prev_method_energy is None) or (new_energy < prev_method_energy - tol)
     broke_overall = (prev_overall_energy is None) or (new_energy < prev_overall_energy - tol)
+    broke_wales = False
 
     #If it is the first time running this set of parameters with the potential, all directories need to be made
     if first_ever_overall:
@@ -163,7 +168,7 @@ def highscores(
         np.save(method_npy, coords)
 
         print(f"We have our first attempt for the current configuration, so kinda a record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
-        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | method = {method_str:<20} | {'FIRST ATTEMPT':^22} | {extra_info}"
+        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT':^22} | {extra_info}"
         append_log(overall_chrono_log, line)
         update_atom_count_log(overall_by_n_log, n_atoms, line)
         append_log(method_chrono_log, line)
@@ -175,7 +180,7 @@ def highscores(
         np.save(method_npy, coords)
 
         print(f"We have our first attempt for the current method, so kinda a method record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
-        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | method = {method_str:<20} | {'FIRST ATTEMPT (METHOD)':^22} | {extra_info}"
+        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT (METHOD)':^22} | {extra_info}"
         append_log(method_chrono_log, line)
         update_atom_count_log(method_by_n_log, n_atoms, line)
 
@@ -183,7 +188,8 @@ def highscores(
             os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
             np.save(overall_npy, coords)
             print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
-            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | method = {method_str:<20} | prev = {prev_overall_energy:<5.10f} | {'OVERALL BEST':^22} | {extra_info}"
+            prev_str = f"prev = {prev_overall_energy:18.10f}"
+            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
             append_log(overall_chrono_log, overall_line)
             update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
 
@@ -193,7 +199,8 @@ def highscores(
             os.makedirs(os.path.dirname(method_npy), exist_ok=True)
             np.save(method_npy, coords)
             print(f"We broke our own record with this method ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_method_energy:.8f})")
-            method_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | prev = {prev_method_energy:<5.10f} | {'METHOD BEST':^22} | {extra_info}"
+            prev_str = f"prev = {prev_method_energy:18.10f}"
+            method_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'METHOD BEST':^22} | {extra_info}"
             append_log(method_chrono_log, method_line)
             update_atom_count_log(method_by_n_log, n_atoms, method_line)
 
@@ -201,23 +208,26 @@ def highscores(
             os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
             np.save(overall_npy, coords)
             print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
-            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | method = {method_str:<20} | prev = {prev_overall_energy:<5.10f} | {'OVERALL BEST':^22} | {extra_info}"
+            prev_str = f"prev = {prev_overall_energy:18.10f}"
+            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
             append_log(overall_chrono_log, overall_line)
             update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
 
     if potential_str.upper() == "LJ" and n_atoms <= 150 and potential_parameters == (1, 1):
         wales_coords = read_LJwales_data(n_atoms)
         wales_energy = float(cluster_potential(wales_coords, pot_func))
+        broke_wales = new_energy < wales_energy - tol
 
-        if new_energy < wales_energy - tol:
+        if broke_wales:
             print(f"We broke the Wales datasets record!!!!!! (Wales LJ N={n_atoms}, {method_str}): E = {new_energy:.10f} < {wales_energy:.10f}")
-            wales_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:<5.10f} | method = {method_str:<20} | BEAT WALES ({wales_energy:<5.10f}) | {extra_info}"
+            wales_str = f"wales = {wales_energy:17.10f}"
+            wales_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {wales_str:<25} | {'BEAT WALES':^22} | {extra_info}"
             append_log(overall_chrono_log, wales_line)
             update_atom_count_log(overall_by_n_log, n_atoms, wales_line)
             append_log(method_chrono_log, wales_line)
             update_atom_count_log(method_by_n_log, n_atoms, wales_line)
 
-    return broke_overall, broke_method, first_ever_overall, first_ever_method
+    return broke_overall, broke_method, first_ever_overall, first_ever_method, broke_wales
 
 
 
