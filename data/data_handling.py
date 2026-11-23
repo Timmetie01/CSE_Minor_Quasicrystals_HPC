@@ -226,7 +226,7 @@ if __name__ == "__main__":
     from src.main_code.potentials_calculations import lennard_jones_derivative, lennard_jones_potential
     from data.data_handling import highscores
 
-    for i in range(2):
+    for i in range(5):
         for j in range(5, 51):
             coords = np.random.random((j, 3))
             opt_coords = LBFGS(coords, lennard_jones_derivative, lennard_jones_potential)
