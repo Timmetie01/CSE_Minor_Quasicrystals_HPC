@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from src.main_code.potentials_calculations import cluster_potential, make_lennard_jones_potential, make_oscillating_pair_potential
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
 WALES_DIR = DATA_DIR / "LJ_data_wales"
 RECORDS_DIR = DATA_DIR / "records"
@@ -90,8 +90,8 @@ def highscores(
     potential_str: str,
     potential_parameters: tuple,
     extra_info: str,
-    tol=1e-12
-    ):
+    tol=1e-5
+    ) -> tuple:
     '''
     Checks if the input coordinates are a new highscore (either overall, or with that GO), and if so logs it. Saves the coordinates and keeps track of both a chronological log file and one ordered by cluster size.
 
@@ -107,7 +107,8 @@ def highscores(
         A string of extra information that will be written at the end of the line inthe log files. Including things like execution time, the local optimizer used, other parameters etc.
     :param float, default=1e-12 tol:
         The difference by which a new minimum must beat an old minimum to be counted. To avoid floating-point error playing a significant role.
-    
+    :return tuple \(bool, bool, bool, bool\):
+        In the following order: (global record broken, method's record broken, first overall try, first method's try)
     '''
 
     coords = np.asarray(new_data, dtype=np.float64)
@@ -127,8 +128,8 @@ def highscores(
     extra_info = " ".join(extra_info.splitlines())
 
     method_str = method_str.lower()
-    if method_str not in ["basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing"]:
-        raise ValueError(f'The method_str should be one of the following: "basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering" or "simulated_annealing", but got {method_str}')
+    if method_str not in ["basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing", "pure_lbfgs"]:
+        raise ValueError(f'The method_str should be one of the following: "basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing" or "pure_lbfgs", but got {method_str}')
 
     #Base folder for this potential and the parameter pair
     param_dir = RECORDS_DIR / potential_tag / param_tag
@@ -216,4 +217,17 @@ def highscores(
             append_log(method_chrono_log, wales_line)
             update_atom_count_log(method_by_n_log, n_atoms, wales_line)
 
-    return new_energy
+    return broke_overall, broke_method, first_ever_overall, first_ever_method
+
+
+
+if __name__ == "__main__":
+    from src.main_code.local_optimizers.bfgs import LBFGS
+    from src.main_code.potentials_calculations import lennard_jones_derivative, lennard_jones_potential
+    from data.data_handling import highscores
+
+    for i in range(2):
+        for j in range(5, 51):
+            coords = np.random.random((j, 3))
+            opt_coords = LBFGS(coords, lennard_jones_derivative, lennard_jones_potential)
+            highscores(opt_coords, "pure_lbfgs", "LJ", (1, 1), "Initial highscores function testing, using LBFGS")
