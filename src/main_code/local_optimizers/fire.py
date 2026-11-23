@@ -2,7 +2,7 @@ import numpy as np
 from src.main_code.potentials_calculations import cluster_potential_gradient
 from collections.abc import Callable
 
-def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
+def FIRE(coords: np.ndarray, potential_derivative_func: Callable, keep_steps: bool = False,
          Nmax: int = 10_000, Nmin: int = 5, f_inc: float = 1.1, f_dec: float = 0.5, 
          alpha0: float = 0.1, f_alpha: float = 0.99, err_tol: float = 1e-5 , 
          dt: float = 0.002, max_step: float = 0.05):
