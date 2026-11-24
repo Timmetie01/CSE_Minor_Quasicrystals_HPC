@@ -43,7 +43,9 @@ def random_in_sphere(n, radius, rng):
     return np.array(points)
 
 
-def simulated_annealing(n_atoms, v, dv, T_start=1.0, T_end=0.01,
+def simulated_annealing(n_atoms, v, dv, local_optimizer=FIRE,
+                        local_optimizer_kwargs=None,
+                        T_start=1.0, T_end=0.01,
                         steps_per_atom=20_000, step_size=0.2, radius=None,
                         target_acceptance=0.45, adapt_every=1000, seed=0):
     """
@@ -117,8 +119,10 @@ def simulated_annealing(n_atoms, v, dv, T_start=1.0, T_end=0.01,
             step_size = min(max(step_size, 0.01), 1.0)
             accepted = 0
 
-    # Slide to the bottom of the valley with FIRE
-    x = FIRE(x, dv)
+    # Slide to the bottom of the valley with the chosen local optimizer
+    if local_optimizer_kwargs is None:
+        local_optimizer_kwargs = {}
+    x = local_optimizer(x, dv, **local_optimizer_kwargs)
     return x, pt.cluster_potential(x, v)
 
 
