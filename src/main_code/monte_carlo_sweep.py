@@ -5,7 +5,7 @@ from src.main_code.potentials_calculations import cluster_potential, lennard_jon
 #More explanation can be found in chapter 3 of https://drive.google.com/file/d/1pxCWOTs2BM8Df1EvQv6NlNiXXUVjdwx8/view?usp=sharing
 
 
-def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: float, potential_func):
+def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: float, potential_func=lennard_jones_potential):
     '''
     Pertrubs a single atom according to the Metropolis condition. Updates coords in place.
 
@@ -59,7 +59,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
 
 import math
 
-def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta: float, R_c: float, potential_func):
+def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta: float, R_c: float, potential_func=lennard_jones_potential):
     '''
     Performs n_moves Monte Carlo steps and tracks the best found potential energy. Updates coords in place.
 

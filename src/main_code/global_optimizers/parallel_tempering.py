@@ -305,7 +305,7 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     M = 10 #Number of replicas
-    N = 15 #Number of atoms
+    N = 30 #Number of atoms
     R_c = 10.0 #Max radius of cluster to prevent atoms from escaping
     swap_every = 10 #Every swap_every sweeps it will attempt the temperature ladder swaps
     N_sweeps = 2000 #Number of MC sweeps, each of which consiting of N MC steps
