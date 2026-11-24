@@ -174,9 +174,9 @@ def make_tapered_oscillating_pair_potential(frequency=6.0, phase_shift=0.59):
     :param r: float or array_like,
         Distance between two particles.
     :param frequency: float, optional,
-        Frequency of the oscillation.
+        Frequency of the oscillation (5.5 =< frequency =< 9.5).
     :param phase_shift: float, optional,
-        Phase shift of the oscillation.
+        Phase shift of the oscillation (0.36 =< phase shift =< 0.82).
     :returns: float or array_like,
         Oscillating pair potential at distance r.
     '''
@@ -209,9 +209,9 @@ def make_tapered_oscillating_pair_derivative(frequency=6.0, phase_shift=0.59):
     :param r: float or array_like,
         Distance between two particles.
     :param frequency: float, optional,
-        Frequency of the oscillation.
+        Frequency of the oscillation (5.5 =< frequency =< 9.5).
     :param phase_shift: float, optional,
-        Phase shift of the oscillation.
+        Phase shift of the oscillation (0.36 =< phase shift =< 0.82).
     :returns: float or array_like,
         Oscillating pair's derivative dV/dr at distance r and it's derivative.
     '''
