@@ -286,22 +286,7 @@ def make_population_local_optimizer(optimizer_func, **kwargs):
     return optimizer_wrapper
   
 
-""" 
-#example usecase
-rng = np.random.default_rng(42)
 
-initial_population = rcube_initial_population(Np=3, K=10,r= 5.0)
-selection       = make_operators(truncation_selection, potential_func = make_lennard_jones_potential(1,1),cutoff_perc=0.5, rng=rng)
-crossover       = make_operators(cut_splice,max_attempts=1000, rng=rng)
-mutation        = make_operators(random_displacement, rng=rng, prob=0.1)
-local_optimizer = make_population_local_optimizer(FIRE,potential_derivative_func = make_lennard_jones_derivative(1,1))
-
-
-final = GA(initial_population, selection, crossover, mutation, local_optimizer, 5,elitism=0)
-print("Final population:")
-for cluster in final:
-    print(cluster)  
- """
 
     
 
