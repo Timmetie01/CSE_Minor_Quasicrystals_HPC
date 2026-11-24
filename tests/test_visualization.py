@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import pyvista as pv
-from src.main_code.visualization import find_bonds_at_distance, find_lj_bonds
+from src.main_code.visuals.visualization import find_bonds_at_distance, find_lj_bonds
 
 
 def test_basic_pair_detection():
