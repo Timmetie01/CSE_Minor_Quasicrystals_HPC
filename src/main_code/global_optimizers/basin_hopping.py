@@ -3,7 +3,7 @@ from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
 from sklearn.ensemble import RandomForestClassifier
 
-def basin_hopping(input_coords: np.ndarray, potential_function: Callable,
+def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
                   local_optimizer_wrapper: Callable, beta: float, max_iter: int,
                   perturbation_type: str = "random", delta: float | None = None) -> tuple[np.ndarray, float, int, int]:
     '''
@@ -93,7 +93,8 @@ def basin_hopping(input_coords: np.ndarray, potential_function: Callable,
         n_iter += 1
 
         # Perturb current coordinates
-        pert_coords = random_perturbation(coords, delta)
+        if(perturbation_type == "random"):
+            pert_coords = random_perturbation(coords, delta)
 
         # Locally optimize perturbed coordinates
         new_coords = local_optimizer_wrapper(pert_coords)
@@ -135,85 +136,3 @@ def random_perturbation(coords: np.ndarray, delta: float) -> np.ndarray:
 
     return new_coords
 
-def generate_candidates(coords: np.ndarray, delta: float, n_candidates: int) -> list:
-    '''
-    Generates a list of candidate configurations by randomly perturbing the input coordinates.
-
-    :param coords: array_like, shape (N, 3)
-        Coordinates of N particles in 3D space.
-    :param delta: float
-        Maximum displacement in each Cartesian direction for random perturbations.
-    :param n_candidates: int
-        Number of candidate configurations to generate.
-    :returns: list of ndarray
-        List containing n_candidates perturbed coordinate arrays.
-    '''
-    candidates = []
-    for _ in range(n_candidates):
-        perturbed_coords = random_perturbation(coords, delta)
-        candidates.append(perturbed_coords)
-    return candidates
-
-def calculate_features(coords: np.ndarray, candidate: np.ndarray, potential_function: Callable, current_energy: float):
-    '''
-    Calculates features for a candidate configuration based on the current coordinates and energy.
-    '''
-    difference = candidate - coords
-    idx = np.argmax(np.linalg.norm(difference, axis=1))
-
-    displacement = np.linalg.norm(difference[idx])
-    
-    distances = np.linalg.norm(candidate - candidate[idx], axis=1)
-    distances = np.delete(distances, idx)
-    
-    min_distance = np.min(distances) if len(distances) > 0 else 0.0
-    max_distance = np.max(distances) if len(distances) > 0 else 0.0
-    
-    candidate_energy = pot.cluster_potential(candidate, potential_function)
-    energy_change = candidate_energy - current_energy
-
-    return np.array([displacement, min_distance, max_distance, energy_change])
-
-def train_ml_model(coords: np.ndarray, current_energy: float,
-                   potential_function: Callable,
-                   local_optimizer_wrapper: Callable,
-                   delta: float, n_samples: int) -> tuple[np.ndarray, np.ndarray]:
-    '''
-    '''
-    
-    X = []
-    y = []
-    
-    for _ in range(n_samples):
-        candidate = random_perturbation(coords, delta)
-    
-        features = calculate_features(coords, candidate, potential_function, current_energy)
-        X.append(features)
-        
-        opt_coords = local_optimizer_wrapper(candidate)
-        opt_energy = pot.cluster_potential(opt_coords, potential_function)
-        
-        # CHANGE THIS (LOSS OF INFORMATION)
-        y.append(1 if opt_energy < current_energy else 0)
-
-    return np.array(X), np.array(y)
-
-def ml_basin_hopping(input_coords: np.ndarray, potential_function: Callable,
-                  local_optimizer_wrapper: Callable, beta: float, max_iter: int,
-                delta: float, n_candidates: int) -> tuple[np.ndarray, float, int, int]:
-    '''
-    
-    '''
-    # add checks
-    
-    coords = np.array(input_coords, dtype=float, copy=True)
-    coords = local_optimizer_wrapper(coords)
-    
-    energy = pot.cluster_potential(coords, potential_function)
-    
-    X, y = train_ml_model(coords, energy, potential_function, local_optimizer_wrapper, delta, n_candidates)
-    
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    
-    model.fit(X, y)
-    
