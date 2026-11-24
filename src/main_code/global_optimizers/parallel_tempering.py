@@ -260,7 +260,7 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
                 rho, energies_lst, replica_at, betas, T_min, k_b, gamma_n, alpha_star=0.234
             )
 
-            # Update per-temperature-slot MC displacement deltas (Eq. 20)
+            # Update per temperature slot MC displacement deltas (Eq. 20)
             slot_acc_rate = slot_accepted / moves_per_window
             log_deltas = np.clip(
                 log_deltas + gamma_n * (slot_acc_rate - 0.234),
