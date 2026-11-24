@@ -2,7 +2,7 @@ import numpy as np
 from src.main_code.potentials_calculations import cluster_potential_gradient
 from collections.abc import Callable
 
-def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
+def FIRE(coords: np.ndarray, potential_derivative_func: Callable, keep_steps: bool = False,
          Nmax: int = 10_000, Nmin: int = 5, f_inc: float = 1.1, f_dec: float = 0.5, 
          alpha0: float = 0.1, f_alpha: float = 0.99, err_tol: float = 1e-5 , 
          dt: float = 0.002, max_step: float = 0.05):
@@ -16,6 +16,11 @@ def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
     :param potential_derivative_func: callable
         Function that calculates the derivative of the pair potential with respect
         to inter-particle distance r.
+    :param keep_steps: boolean, optional
+        Decides if the function should keep the full history of steps made. 
+        If so, the function will return a tuple of (coord_loc_min, array_of_coords). 
+        This can lead to arrays of many Mb's, use with caution.
+        Defaults to False
     :param Nmax: int, optional
         Maximum number of optimization iterations. Default is 10_000.
     :param Nmin: int, optional
@@ -51,6 +56,9 @@ def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
     vel = np.zeros_like(coords)
     alpha = alpha0
     Npos = 0
+
+    if keep_steps:
+        step_arr = np.empty((0,len(coords),3), dtype=np.float64)
 
     F = - cluster_potential_gradient(coords, potential_derivative_func)
 
@@ -88,11 +96,15 @@ def FIRE(coords: np.ndarray, potential_derivative_func: Callable,
         if F_norm > 0:
             vel = (1 - alpha) * vel + alpha * (F / F_norm) * np.linalg.norm(vel)
 
+        if keep_steps:
+            step_arr = np.append(step_arr, np.array([coords]), 0)
         i += 1
 
     if i == Nmax:
         raise RuntimeWarning("FIRE optimizer reached its max iteration count without converging, returning non-optimal coordinates...")
 
+    if keep_steps:
+        return coords, step_arr
     return coords
 
 def validate_fire_data(coords: np.ndarray, potential_derivative_func: Callable,
