@@ -138,7 +138,7 @@ def find_bonds_at_distance(coords, bond_dist, tol=0.05):
     '''
     bonds = np.empty((0,2,3))
     for i, coord1 in enumerate(coords):
-            for coord2 in coords[i:]:
+            for coord2 in coords[i+1:]:
                 if np.abs(np.linalg.norm(coord1 - coord2) - bond_dist) < tol:
                     bonds = np.append(bonds, np.array([[coord1, coord2]]), 0)
     
