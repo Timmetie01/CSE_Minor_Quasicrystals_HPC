@@ -163,9 +163,11 @@ def compare_near_global(glob_opt_coords, N):
     np.random.seed(0)
     fire_times = np.zeros(N)
     bfgs_times = np.zeros(N)
+    lbfgs_times = np.zeros(N)
 
     fire_reaches_glob = np.zeros(N, np.bool)
     bfgs_reaches_glob = np.zeros(N, np.bool)
+    lbfgs_reaches_glob = np.zeros(N, np.bool)
     atom_count = len(glob_opt_coords)
 
 
@@ -181,19 +183,25 @@ def compare_near_global(glob_opt_coords, N):
         bfgs_opt = bfgs.BFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential)
         bfgs_times[i] = t.time() - t0
 
+        t0 = t.time()
+        lbfgs_opt = bfgs.LBFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential)
+        lbfgs_times[i] = t.time() - t0
+
         if fire_opt == pytest.approx(glob_opt_coords):
             fire_reaches_glob[i] = True
         if bfgs_opt == pytest.approx(glob_opt_coords):
             bfgs_reaches_glob[i] = True    
+        if lbfgs_opt == pytest.approx(glob_opt_coords):
+            lbfgs_reaches_glob[i] = True    
 
-    
-    plt.hist([fire_times,bfgs_times], color=['firebrick','darkblue'], label=['FIRE', 'BFGS'], bins=20)
+    plt.hist([fire_times,bfgs_times, lbfgs_times], color=['firebrick','darkblue','darkgreen'], label=['FIRE','BFGS','L-BFGS'], bins=25)
     plt.xlabel('Optimization run duration')
     plt.ylabel('Amount of times occured')
+    plt.title('Local Optimizer Comaparison Histogram')
     plt.legend()
     plt.show()
         
-compare_near_global(np.array([[0,0,0], [2,0,0], [0,1,0]]), 1000)
+compare_near_global(np.array([[0,0,0], [2,0,0]]), 1000)
 compare_near_global(glob_opt_150, 50)
         
 

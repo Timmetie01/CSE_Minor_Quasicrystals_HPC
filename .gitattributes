@@ -1,2 +1,11 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Custom Python energy comparator for cluster coordinates
+data/records/**/*.npy merge=merge-cluster-npy
+
+# General chronological record logs -> built-in Git union driver (essentially keep both)
+data/records/**/*.log merge=union
+
+# Specific _by_N logs (overrides rule 2 because it comes later) -> custom line-by-line merger to keep log accurate
+data/records/**/*_by_N.log merge=merge-by-n-log
