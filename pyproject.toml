@@ -5,6 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cse_minor_quasicrystals_hpc"
 version = "0.1.0"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+    "pyvista",
+    "numba",
+    "pytest",
+    "filelock",
+    "tqdm",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
