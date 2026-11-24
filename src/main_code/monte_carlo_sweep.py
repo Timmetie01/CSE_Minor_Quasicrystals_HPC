@@ -41,7 +41,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
     coords[idx] += move
     accepted = 0
 
-    if old_pos[0]**2 + old_pos[1]**2 + old_pos[2]**2 < R_c**2: #dont move too far from the centre or atoms will escape
+    if coords[idx, 0]**2 + coords[idx, 1]**2 + coords[idx, 2]**2 > R_c**2: #dont move too far from the centre or atoms will escape
         coords[idx] = old_pos #revert move if not accepted
         pot_energy = energy
         return pot_energy, accepted
