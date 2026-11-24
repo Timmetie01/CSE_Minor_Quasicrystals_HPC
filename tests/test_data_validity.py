@@ -23,16 +23,6 @@ def test_LJ_wales_correctness():
     [ 0.417694325594403,   0.318313250559209,  -0.692983073948749],
     [-0.199579143040966,   0.146776469285409,   0.239112890083651]]))
 
-ALLOWED_POTENTIALS = {"LJ", "OP"}
-ALLOWED_METHODS = {
-    "basin_hopping",
-    "basin_hopping_ml",
-    "genetic_algorithm",
-    "parallel_tempering",
-    "simulated_annealing",
-    "pure_lbfgs",
-}
-
 
 def extract_energy(line: str) -> float:
     for part in line.split("|"):
@@ -55,7 +45,7 @@ def test_records_database_integrity():
     for potential_dir in RECORDS_DIR.iterdir():
         if not potential_dir.is_dir():
             continue
-        assert potential_dir.name in ALLOWED_POTENTIALS, f"Unexpected potential folder: {potential_dir}"
+        assert potential_dir.name in data.data_handling.ALLOWED_POTENTIALS, f"Unexpected potential folder: {potential_dir}"
 
         for param_dir in potential_dir.iterdir():
             if not param_dir.is_dir():
@@ -69,7 +59,7 @@ def test_records_database_integrity():
             if methods_dir.exists():
                 for d in methods_dir.iterdir():
                     if d.is_dir():
-                        assert d.name in ALLOWED_METHODS, f"Unknown method folder: {d}"
+                        assert d.name in data.data_handling.ALLOWED_METHODS, f"Unknown method folder: {d}"
                         method_dirs.append(d)
 
             # Collect all (npy_folder, by_n_log) pairs
