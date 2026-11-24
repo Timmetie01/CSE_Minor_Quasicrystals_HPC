@@ -22,3 +22,6 @@ ENV/
 .eggs/
 build/
 dist/
+
+# macOS system files
+.DS_Store
