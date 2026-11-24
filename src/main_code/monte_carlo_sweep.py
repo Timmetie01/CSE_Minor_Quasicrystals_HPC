@@ -41,7 +41,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
     coords[idx] += move
     accepted = 0
 
-    if np.linalg.norm(coords[idx]) > R_c: #dont move too far from the centre or atoms will escape
+    if old_pos[0]**2 + old_pos[1]**2 + old_pos[2]**2 > R_c**2: #dont move too far from the centre or atoms will escape
         coords[idx] = old_pos #revert move if not accepted
         pot_energy = energy
         return pot_energy, accepted
@@ -57,6 +57,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
         pot_energy = energy
     return pot_energy, accepted
 
+import math
 
 def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta: float, R_c: float, potential_func):
     '''
@@ -81,20 +82,37 @@ def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta
     :raises ValueError: 
         if the input coordinates are not a 2D array with shape (N, 3).
     '''
-
-    #Enforce that the input coordinates are a 2D array with shape (N, 3)
-    coords = np.asarray(coords)
-    if coords.ndim != 2 or coords.shape[1] != 3:
-        raise ValueError("Coordinates must be a 2D array with shape (N, 3).")
-    
+    n_atoms = len(coords)
+    R_c_sq = R_c * R_c
     best_energy = energy
     best_coords = coords.copy()
     n_accepted_steps = 0 #To tune delta later keep track of how often we accept
 
+    # Pre-generate all rng
+    indices = np.random.randint(0, n_atoms, size=n_moves)
+    moves = np.random.uniform(-delta, delta, size=(n_moves, 3))
+    rand_u = np.random.rand(n_moves)
+
     for i in range(n_moves):
-        energy, accepted = mc_step(coords, energy, beta, delta, R_c, potential_func)
-        n_accepted_steps += accepted
-        if energy < best_energy:
-            best_energy = energy
-            best_coords = coords.copy()
+        idx = indices[i] #choose what atom to pertrube randomly
+        old_pos = coords[idx].copy()
+        new_pos = old_pos + moves[i]
+
+        if new_pos[0]**2 + new_pos[1]**2 + new_pos[2]**2 > R_c_sq: #dont move too far from the centre or atoms will escape
+            continue
+
+        old_energy_idx = single_atom_potential(coords, idx, potential_func)
+        coords[idx] = new_pos
+        new_energy_idx = single_atom_potential(coords, idx, potential_func)
+        delta_energy = new_energy_idx - old_energy_idx
+
+        if delta_energy <= 0.0 or rand_u[i] < np.exp(-beta * delta_energy): #Metropolis criterion
+            energy += delta_energy
+            n_accepted_steps += 1
+            if energy < best_energy:
+                best_energy = energy
+                best_coords = coords.copy()
+        else:
+            coords[idx] = old_pos #revert move if not accepted
+
     return energy, best_energy, best_coords, n_accepted_steps

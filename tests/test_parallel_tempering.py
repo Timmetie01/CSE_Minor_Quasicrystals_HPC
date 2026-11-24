@@ -16,82 +16,78 @@ def test_pt_invalid_scalar_parameters():
     """Verify TypeError and ValueError for invalid M, R_c, swap_every, and N_sweeps."""
     M = 3
     temps = np.array([0.1, 0.2, 0.3])
-    T_min = float(temps[0])
-    rho = temps_to_rho(temps)
     deltas = np.array([0.05, 0.1, 0.15])
     coords = np.zeros((M, 4, 3))
     energies = np.zeros(M)
 
     # M validation (reject bools, floats, non-positive ints)
     with pytest.raises(TypeError):
-        parallel_tempering_run(coords, energies, True, temps, deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, True, temps, deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(TypeError):
-        parallel_tempering_run(coords, energies, 3.0, temps, deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, 3.0, temps, deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(coords, energies, 0, temps, deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, 0, temps, deltas, 2.5, 5, 10, lennard_jones_potential)
 
     # R_c validation
     with pytest.raises(TypeError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, False, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, False, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, -1.0, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, -1.0, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, np.inf, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, np.inf, 5, 10, lennard_jones_potential)
 
     # swap_every validation
     with pytest.raises(TypeError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 2.5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 2.5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 0, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 0, 10, lennard_jones_potential)
 
     # N_sweeps validation
     with pytest.raises(TypeError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 5, True, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 5, True, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 5, -5, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(coords, energies, M, temps, deltas, 2.5, 5, -5, lennard_jones_potential)
 
 
 def test_pt_invalid_array_parameters():
     """Verify shape, ordering, finiteness, and positivity checks for temps, deltas, coords, and energies."""
     M = 3
     valid_temps = np.array([0.1, 0.2, 0.3])
-    T_min = float(valid_temps[0])
-    rho = temps_to_rho(valid_temps)
     valid_deltas = np.array([0.05, 0.1, 0.15])
     valid_coords = np.zeros((M, 4, 3))
     valid_energies = np.zeros(M)
 
     # Unordered, duplicate, or non-positive temperatures
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, [0.3, 0.2, 0.1], valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, [0.3, 0.2, 0.1], valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, [0.1, 0.2, 0.2], valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, [0.1, 0.2, 0.2], valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, [0.0, 0.2, 0.3], valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, [0.0, 0.2, 0.3], valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, [0.1, 0.2], valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, [0.1, 0.2], valid_deltas, 2.5, 5, 10, lennard_jones_potential)
 
     # Non-positive or mismatched deltas
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, valid_temps, [0.05, 0.0, 0.15], 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, valid_temps, [0.05, 0.0, 0.15], 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, valid_energies, M, valid_temps, [0.05, 0.1], 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, valid_energies, M, valid_temps, [0.05, 0.1], 2.5, 5, 10, lennard_jones_potential)
 
     # Invalid start_coords shapes, 0 atoms, or NaNs
     with pytest.raises(ValueError):
-        parallel_tempering_run(np.zeros((4, 3)), valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(np.zeros((4, 3)), valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(np.zeros((M, 0, 3)), valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(np.zeros((M, 0, 3)), valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     bad_coords = valid_coords.copy()
     bad_coords[0, 0, 0] = np.nan
     with pytest.raises(ValueError):
-        parallel_tempering_run(bad_coords, valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(bad_coords, valid_energies, M, valid_temps, valid_deltas, 2.5, 5, 10, lennard_jones_potential)
 
     # Invalid start_energies shape or NaN
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, np.zeros(M + 1), M, valid_temps, valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, np.zeros(M + 1), M, valid_temps, valid_deltas, 2.5, 5, 10, lennard_jones_potential)
     with pytest.raises(ValueError):
-        parallel_tempering_run(valid_coords, [0.0, np.nan, 0.0], M, valid_temps, valid_deltas, 2.5, 5, 10, rho, T_min, lennard_jones_potential)
+        parallel_tempering_run(valid_coords, [0.0, np.nan, 0.0], M, valid_temps, valid_deltas, 2.5, 5, 10, lennard_jones_potential)
 
 
 def test_attempt_temp_swaps_deterministic_and_parity():
@@ -170,23 +166,21 @@ def test_pt_does_not_mutate_inputs_and_returns_valid_state():
     N = 5
     R_c = 2.5
     temps = np.geomspace(0.05, 0.35, M)
-    T_min = float(temps[0])
-    rho = temps_to_rho(temps)
     deltas = make_deltas(temps)
     energies, coords = make_start(N, M, R_c, cluster_potential)
 
     coords_before = coords.copy()
     energies_before = energies.copy()
-    rho_before = rho.copy()
+    temps_before = temps.copy()
 
     best_e, best_c = parallel_tempering_run(
-        coords, energies, M, temps, deltas, R_c, swap_every=5, N_sweeps=50, rho=rho, T_min=T_min, potential_func=lennard_jones_potential
+        coords, energies, M, temps, deltas, R_c, swap_every=5, N_sweeps=50, potential_func=lennard_jones_potential
     )
 
     # Inputs untouched
     assert np.array_equal(coords, coords_before), "start_coords must not be mutated in-place."
     assert np.array_equal(energies, energies_before), "start_energies must not be mutated in-place."
-    assert np.array_equal(rho, rho_before), "rho must not be mutated in-place."
+    assert np.array_equal(temps, temps_before), "temps must not be mutated in-place."
 
     # Output consistency
     assert best_c.shape == (N, 3)
@@ -206,13 +200,11 @@ def test_pt_finds_lj6_global_minimum():
     N = 6
     R_c = 2.5
     temps = np.geomspace(0.04, 0.35, M)
-    T_min = float(temps[0])
-    rho = temps_to_rho(temps)
     deltas = make_deltas(temps)
     energies, coords = make_start(N, M, R_c, cluster_potential)
 
     best_e, best_c = parallel_tempering_run(
-        coords, energies, M, temps, deltas, R_c, swap_every=10, N_sweeps=1500, rho=rho, T_min=T_min, potential_func=lennard_jones_potential
+        coords, energies, M, temps, deltas, R_c, swap_every=10, N_sweeps=1500, potential_func=lennard_jones_potential
     )
 
     # Unquenched T > 0 energy should already be very close to the -12.712062 global minimum basin
@@ -259,8 +251,6 @@ def test_pt_escape_local_minima_lj7_cluster():
     M = 8
     R_c = 3.0
     temps = np.geomspace(0.05, 0.45, M)
-    T_min = float(temps[0])
-    rho = temps_to_rho(temps)
     deltas = make_deltas(temps)
     start_coords = np.repeat(local_min_coords[np.newaxis, :, :], M, axis=0)
     start_energies = np.full(M, local_min_energy)
@@ -274,8 +264,6 @@ def test_pt_escape_local_minima_lj7_cluster():
         R_c=R_c,
         swap_every=10,
         N_sweeps=1500,
-        rho=rho,
-        T_min=T_min,
         potential_func=lennard_jones_potential,
     )
 

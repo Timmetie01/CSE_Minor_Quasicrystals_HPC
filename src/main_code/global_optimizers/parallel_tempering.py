@@ -21,7 +21,7 @@ def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
     :returns: None
     '''
     start = attempt_count % 2 #Vary checking even and odd pairs of temperatures
-    # instead of varying this you could also just choose random pairs to check
+    #Instead of varying this you could also just choose random pairs to check, but supposedly this method is better
     for t in range(start, M - 1, 2):
         r_i, r_j = replica_at[t], replica_at[t + 1]   # replicas at adjacent only temperatures
         delta = (betas[t] - betas[t + 1]) * (energies[r_i] - energies[r_j])
@@ -36,7 +36,7 @@ def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
 
 def temps_to_rho(temps: np.ndarray) -> np.ndarray:
     """
-    Converts temps to the differences of the logs of the temperatures.
+    Converts temps to the log of the differences of the temperatures.
     """
     dimless_temps = temps / temps[0]
     diffs = np.diff(dimless_temps)
@@ -97,7 +97,7 @@ def update_temp_ladder(
 
     return rho_next, temps_next, betas_next
 
-def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, N_sweeps, rho, T_min, potential_func):
+def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, N_sweeps, potential_func):
     '''
     Runs a parallel tempering Monte Carlo simulation across M temperature replicas to search for the global minimum potential energy.
 
@@ -177,7 +177,7 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
         raise ValueError("deltas must contain only finite, positive values")
 
 # Convert coordinates to a floating-point array and protect original input
-    coords_lst = np.array(start_coords)
+    coords_lst = np.array(start_coords) # updated in-place by mc_sweep
     if coords_lst.dtype == bool or not np.issubdtype(coords_lst.dtype, np.number):
         raise TypeError("start_coords must contain numeric values")
 
@@ -203,6 +203,9 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if not np.all(np.isfinite(energies_lst)):
         raise ValueError("start_energies must contain only finite values")
 
+
+    T_min = float(temps_arr[0])
+    rho = temps_to_rho(temps_arr)
     replica_at = np.arange(M)  # Which replica is at which temperature
     k_b = 1.0  # Boltzmann constant, 1 is for standard units in LJ potential
     betas = 1.0 / (k_b * temps_arr)
@@ -302,23 +305,20 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     M = 10 #Number of replicas
-    N = 14 #Number of atoms
-    R_c = 2.5 #Max radius of cluster to prevent atoms from escaping
-    swap_every = 10
-    N_sweeps = 2000
-    temps = np.geomspace(0.05, 0.40, M)
-    T_min = float(temps[0])
-    rho = temps_to_rho(temps) #Seperate parameter used for updating temps to ensure they dont cross over
-
+    N = 132 #Number of atoms
+    R_c = 10.0 #Max radius of cluster to prevent atoms from escaping
+    swap_every = 10 #Every swap_every sweeps it will attempt the temperature ladder swaps
+    N_sweeps = 2000 #Number of MC sweeps, each of which consiting of N MC steps
+    temps = np.geomspace(0.05, 0.40, M) #Initial temperature ladder, T_min and T_max are the most important choices. 
+    #T_min will stay fixed over the temperature adjustments, T_max may change.
     deltas = make_deltas(temps)
     energies, coords = make_start(N, M, R_c, cluster_potential)
 
     t_start = time.perf_counter()
-    best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps, rho, T_min, lennard_jones_potential)
+    best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps, lennard_jones_potential)
     t_end = time.perf_counter()
 
     print(f"PT runtime: {t_end - t_start:.4f} s")
-    print("Unquenched global minimum:", best_e)
 
     #Then we need to quench as this found value will be for T>0 and the minima in the table are at T=0:
     best_c_q = FIRE(best_c, lennard_jones_derivative,
@@ -326,4 +326,4 @@ if __name__ == "__main__":
             alpha0=0.1, f_alpha=0.99, err_tol=1e-5, 
             dt=0.002, max_step=0.05)
     best_e_q = cluster_potential(best_c_q)
-    print("Quenched global minimum:", best_e_q)
+    print("Quenched global energy minimum:", best_e_q, "for: ", N, " atoms.")
