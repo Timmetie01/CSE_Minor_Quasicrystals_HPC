@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
 
-pip install numpy scipy matplotlib pyvista numba pytest filelock tqdm
+pip install numpy scipy matplotlib pyvista numba pytest filelock tqdm pandas
 pip install -e .
 
 git config merge.records-npy.name "Keep lowest-energy .npy cluster"
