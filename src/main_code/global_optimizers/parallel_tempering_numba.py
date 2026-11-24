@@ -30,13 +30,14 @@ def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
 
 def temps_to_rho(temps: np.ndarray) -> np.ndarray:
     """
-    Converts temps to the log of the differences of the temperatures.
+    Converts strictly increasing temperatures on [T_min, T_max] to log-spacings rho.
     """
-    dimless_temps = temps / temps[0]
-    diffs = np.diff(dimless_temps)
+    diffs = np.diff(temps)
     if np.any(diffs <= 0):
         raise ValueError("Initial temperatures must be strictly increasing to compute rho.")
-    return np.log(diffs)
+    span = temps[-1] - temps[0]
+    return np.log(diffs / span)
+
 
 @njit
 def update_temp_ladder(
@@ -45,44 +46,72 @@ def update_temp_ladder(
     replica_at: np.ndarray,
     betas: np.ndarray,
     T_min: float,
+    T_max: float,
     k_b: float,
     step_size: float,
-    alpha_star: float = 0.234,
-    rho_bounds: tuple = (-10.0, 10.0),
+    rho_bounds: tuple = (-6.0, 6.0),
 ):
     """
-    Updates the temperature ladder using Robbins-Monro stochastic approximation (Eqs. 13-16).
+    Updates interior temperatures on a fixed [T_min, T_max] interval via
+    Robbins-Monro equal-acceptance-rate adaptation (Atchadé et al. / Vousden et al.).
     """
     M = betas.shape[0]
-    rho_next = np.empty(M - 1, dtype=np.float64)
+    n_intervals = M - 1
+
+    # Compute current adjacent swap acceptance probabilities
+    accept_probs = np.empty(n_intervals, dtype=np.float64)
+    mean_accept = 0.0
+    for t in range(n_intervals):
+        e_low = energies[replica_at[t]]
+        e_high = energies[replica_at[t + 1]]
+        log_ratio = (betas[t] - betas[t + 1]) * (e_low - e_high)
+        p = 1.0 if log_ratio >= 0.0 else np.exp(log_ratio)
+        accept_probs[t] = p
+        mean_accept += p
+    mean_accept /= n_intervals
+
+    # Update rho toward equalizing adjacent acceptance rates around mean_accept
+    rho_next = np.empty(n_intervals, dtype=np.float64)
+    max_rho = -1e300
+    for t in range(n_intervals):
+        val = rho[t] + step_size * (accept_probs[t] - mean_accept)
+        if val < rho_bounds[0]:
+            val = rho_bounds[0]
+        elif val > rho_bounds[1]:
+            val = rho_bounds[1]
+        rho_next[t] = val
+        if val > max_rho:
+            max_rho = val
+
+    # Shift rho_next by max_rho (log-sum-exp trick) to prevent overflow and eliminate drift
+    weights = np.empty(n_intervals, dtype=np.float64)
+    sum_w = 0.0
+    for t in range(n_intervals):
+        rho_next[t] -= max_rho
+        if rho_next[t] < rho_bounds[0]:
+            rho_next[t] = rho_bounds[0]
+        w = np.exp(rho_next[t])
+        weights[t] = w
+        sum_w += w
+
+    # Reconstruct temperatures on [T_min, T_max]
     temps_next = np.empty(M, dtype=np.float64)
     betas_next = np.empty(M, dtype=np.float64)
 
     temps_next[0] = T_min
     betas_next[0] = 1.0 / (k_b * T_min)
-    cum_diff = 0.0
 
-    for t in range(M - 1):
-        e_low = energies[replica_at[t]]
-        e_high = energies[replica_at[t + 1]]
-        log_ratio = (betas[t] - betas[t + 1]) * (e_low - e_high)
-
-        if log_ratio >= 0.0:
-            accept_prob = 1.0
-        else:
-            accept_prob = np.exp(log_ratio)
-
-        val = rho[t] + step_size * (accept_prob - alpha_star)
-        if val < rho_bounds[0]:
-            val = rho_bounds[0]
-        elif val > rho_bounds[1]:
-            val = rho_bounds[1]
-
-        rho_next[t] = val
-        cum_diff += np.exp(val)
-        t_val = T_min * (1.0 + cum_diff)
+    span = T_max - T_min
+    cum_w = 0.0
+    for t in range(n_intervals - 1):
+        cum_w += weights[t] / sum_w
+        t_val = T_min + span * cum_w
         temps_next[t + 1] = t_val
         betas_next[t + 1] = 1.0 / (k_b * t_val)
+
+    # Pin the top endpoint identically to T_max (avoids floating-point drift)
+    temps_next[M - 1] = T_max
+    betas_next[M - 1] = 1.0 / (k_b * T_max)
 
     return rho_next, temps_next, betas_next
 
@@ -106,7 +135,8 @@ def _pt_loop_njit(
     Parallel Tempering inner loop using numba.
     """
     T_min = temps_arr[0]
-    rho = np.log(np.diff(temps_arr / T_min))
+    T_max = temps_arr[-1]
+    rho = np.log(np.diff(temps_arr) / (T_max - T_min))
     replica_at = np.arange(M)
     k_b = 1.0
     betas = 1.0 / (k_b * temps_arr)
@@ -170,9 +200,9 @@ def _pt_loop_njit(
             attempt_count += 1
 
             if i < adapt_cutoff:
-                gamma_n = 0.5 / ((attempt_count + 5) ** 0.6)
+                gamma_n = 0.5 / ((attempt_count + 50) ** 0.6)
                 rho, temps_arr, betas = update_temp_ladder(
-                    rho, energies_lst, replica_at, betas, T_min, k_b, gamma_n, 0.234
+                rho, energies_lst, replica_at, betas, T_min, T_max, k_b, gamma_n
                 )
 
                 for j in range(M):
@@ -196,6 +226,7 @@ def _pt_loop_njit(
                 if q_energy < best_energy:
                     best_energy = q_energy
                     best_coords = q_coords
+    print("Temperatures at end", temps_arr)
     return best_energy, best_coords
 
 
@@ -350,13 +381,13 @@ def make_start(N, M, R_c, cluster_pot_func):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    M = 29
-    N = 49
-    R_c = 3.6
-    swap_every = 2
+    M = 10
+    N = 13
+    R_c = 3.0
+    swap_every = 3
     quench_every = None
-    N_sweeps = 150000
-    temps = np.geomspace(0.04, 0.55, M)
+    N_sweeps = 50000
+    temps = np.geomspace(0.04, 0.48, M)
     deltas = make_deltas(temps, 0.08, temps[0])
     energies, coords = make_start(N, M, R_c, cluster_potential)
     adapt_fraction = 1.0
