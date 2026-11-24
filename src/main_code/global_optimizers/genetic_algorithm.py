@@ -1,10 +1,9 @@
 from src.main_code.local_optimizers.fire import FIRE
-from src.main_code.potentials_calculations import make_lennard_jones_potential, cluster_potential
-from functools import partial
+from src.main_code.potentials_calculations import make_lennard_jones_potential, cluster_potential, make_lennard_jones_derivative
 import numpy as np
 
 def GA(initial_population, selection, crossover, mutation, local_optimizer,
-       number_of_iterations=100):
+       number_of_iterations=100, elitism = 0):
     """
     Performs global geometry optimization of a particle cluster using a modifiable genetic algorithm.
     
@@ -20,8 +19,14 @@ def GA(initial_population, selection, crossover, mutation, local_optimizer,
         Function to optimize the geometry of individual clusters
     :param number_of_iterations: int, optional
         Number of iterations for the genetic algorithm (default is 100)
+    :param elitism: int >= 0
+        number of best clusters to be directly copied into next generation
     :returns: list of np-arrays
-        List of optimized clusters after the specified number of iterations"""
+        List of optimized clusters after the specified number of iterations
+    :raises ValueError: invalid argument
+                if parameters are not of specified type and bound 
+    :raises ValueError: invalid argument
+                    if elitism is greater then the population size""" 
     
     if not isinstance(initial_population, list) or len(initial_population) < 2:
         raise ValueError("initial_population must be a list of at least two clusters")
@@ -29,21 +34,28 @@ def GA(initial_population, selection, crossover, mutation, local_optimizer,
         raise ValueError("selection, crossover, mutation and local_optimizer must be callable")
     if not isinstance(number_of_iterations, int) or number_of_iterations < 0:
         raise ValueError("number_of_iterations must be a non-negative integer")
+    if not isinstance(elitism,int) or elitism <0:
+        raise ValueError("elitism must be a non-negative integer")
 
     Np = len(initial_population)
 
+    if elitism >= Np:
+        raise ValueError("elitism is greater then or equal to the population size")
+    No = Np- elitism #number of population to be operated on outside of elitism
+    selection = make_operators(selection,N=No,elitism = elitism)
+
     # relax the starting population once
-    current_population = [local_optimizer(c) for c in initial_population]
+    current_population = local_optimizer(initial_population)
 
     for _ in range(number_of_iterations):
-        parent_pairs = selection(current_population)            # Np pairs
+        parent_pairs, elitism_lst = selection(current_population)            # Np pairs
         children = [crossover(pair) for pair in parent_pairs]   # Np children
         children = [mutation(c) for c in children]              # mutate each child
-        current_population = [local_optimizer(c) for c in children]  # relax each child
-
+        current_population = local_optimizer(children)  # relax each child
+        current_population.extend(elitism_lst) #add elitist clusters if elitism > 0 
     return current_population
 
-def truncation_selection(population,potential_func, cutoff_perc,N,rng = None):
+def truncation_selection(population,potential_func, cutoff_perc,N, elitism=0,rng = None):
     '''
         Perfoms truncation selection on a population of clusters based on their potential energies.
     
@@ -55,6 +67,8 @@ def truncation_selection(population,potential_func, cutoff_perc,N,rng = None):
             Percentage of the population to remove
         :param N: positive integer > 0
             Number of parent pairs to create
+        :param elitism: positive int >0
+            number of best individuals to directly added to next generation, error handling inside GA
         :returns: List of np-arrays,
             List of parent pairs
         :raises ValueError: invalid argument
@@ -74,13 +88,19 @@ def truncation_selection(population,potential_func, cutoff_perc,N,rng = None):
         rng = np.random.default_rng()
     # initialisation and sorting population
     parent_pair_pool = []
+    elitism_lst = []
     Np = len(population)
     fitness_list = [
         (cluster_potential(cluster, potential_func), cluster)
         for cluster in population
     ]
-
+    # Sort ascending: most negative (best) -> most positive (worst)
     fitness_list.sort(key=lambda x: x[0])
+
+    # Extract top `elitism` clusters (copied so in-place mutations don't alter elites)
+    elitism_lst = [
+        cluster.copy() for energy, cluster in fitness_list[:elitism]
+    ]
     # Truncate population leaving only the best individuals
     cutoff_amount = int(Np * cutoff_perc)
     survivor_amount = Np - cutoff_amount
@@ -96,9 +116,9 @@ def truncation_selection(population,potential_func, cutoff_perc,N,rng = None):
         i, j = rng.choice(survivor_amount, size=2, replace=False)
         parent_pair_pool.append((truncated_list[i], truncated_list[j]))
 
-    return parent_pair_pool
+    return parent_pair_pool , elitism_lst
 
-def rcube_initial_population(N, K, r):
+def rcube_initial_population(Np, K, r):
     '''
     random initilization of a population with N clusters all containing K atoms bounded inside a cube around the origin with side length r
 
@@ -113,14 +133,14 @@ def rcube_initial_population(N, K, r):
     :raises ValueError: invalid argument
         if parameters are not of specified type and bound           
     '''  
-    if not isinstance(N,int) or N <= 0:
+    if not isinstance(Np,int) or Np <= 0:
         raise ValueError("N must be a integer value greater then 0")
     if not isinstance(K,int) or K <= 0:
             raise ValueError("K must be a integer value greater then 0")
     if not isinstance(r,(int,float)) or r <= 0:
         raise ValueError("r must be a float value greater then 0")
     
-    population = [np.random.uniform(-r/2, r/2, size=(K, 3)) for _ in range(N)]
+    population = [np.random.uniform(-r/2, r/2, size=(K, 3)) for _ in range(Np)]
     return population
 
 def cut_splice(parent_pair, max_attempts=1000, rng=None):
@@ -233,25 +253,55 @@ def random_displacement(cluster, prob=0.25, max_frac=0.1, rng = None):
 
     return cluster + directions * lengths 
 
+def make_operators(operator, **kwargs):
+    '''
+    Binds keyword arguments to operator and returns a callable.
+    The convention here is that the first argument of a operators procedure 
+    is for the clusters (pairs).
 
+    :param operator: callable
+        operators function
+    :param kwargs: keyword arguments
+        arguments of the operators procedure besides the first
+    :returns: callable
+    '''
+    def operator_wrapper(clusters, **extra_kwargs):
+        return operator(clusters, **{**kwargs, **extra_kwargs})
+    return operator_wrapper
+  
+def make_population_local_optimizer(optimizer_func, **kwargs):
+    '''
+        Binds keyword arguments to local optimizer and returns a callable.
+        this callable must be given a list of cluster over which the chosen
+        local optimizer runs.
+    
+        :param optimizer_func: callable
+            operators function
+        :param kwargs: keyword arguments
+            arguments of the operators procedure besides the first
+        :returns: callable
+        '''
+    def optimizer_wrapper(clusters):
+        return [optimizer_func(cluster, **kwargs) for cluster in clusters]
+    return optimizer_wrapper
+  
 
-""" #removed later,
-#perform GA with an initial population of 3 clusters, each containing 10 atoms with 5+1 generations   
-
+""" 
+#example usecase
 rng = np.random.default_rng(42)
 
-initial_population = rcube_initial_population(3, 10, 5.0)
-selection       = partial(truncation_selection, potential_func = make_lennard_jones_potential(1,1),cutoff_perc=0.5, N=3, rng=rng)
-crossover       = partial(cut_splice,max_attempts=1000, rng=rng)
-mutation        = partial(random_displacement, rng=rng, prob=0.1)
-local_optimizer = partial(FIRE, potential_derivative_func = make_lennard_jones_potential(1,1), Nmax=10_000, Nmin=5, f_inc=1.1, f_dec=0.5, alpha0=0.1, f_alpha=0.99, err_tol=1e-5, dt=0.002, max_step=0.05)
+initial_population = rcube_initial_population(Np=3, K=10,r= 5.0)
+selection       = make_operators(truncation_selection, potential_func = make_lennard_jones_potential(1,1),cutoff_perc=0.5, rng=rng)
+crossover       = make_operators(cut_splice,max_attempts=1000, rng=rng)
+mutation        = make_operators(random_displacement, rng=rng, prob=0.1)
+local_optimizer = make_population_local_optimizer(FIRE,potential_derivative_func = make_lennard_jones_derivative(1,1))
 
 
-final = GA(initial_population, selection, crossover, mutation, local_optimizer, 5)
+final = GA(initial_population, selection, crossover, mutation, local_optimizer, 5,elitism=0)
 print("Final population:")
 for cluster in final:
-    print(cluster)  """
-
+    print(cluster)  
+ """
 
     
 
