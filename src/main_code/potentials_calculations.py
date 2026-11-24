@@ -1,5 +1,47 @@
 from matplotlib.pylab import norm
 import numpy as np
+from numba import njit
+
+@njit
+def lennard_jones_potential_njit(r, epsilon=1.0, sigma=1.0):
+    '''
+    Calculate the Lennard-Jones potential for a given distance inside an njit loop.
+
+    :param r: float or array_like, 
+        Distance between two particles.
+    :param epsilon: float, optional, 
+        Depth of the potential well.
+    :param sigma: float, optional, 
+        Finite distance at which the inter-particle potential is zero.
+    :returns: float or array_like,
+        Lennard-Jones potential at distance r.
+    '''
+    inv_r = sigma / r
+    inv_r2 = inv_r * inv_r
+    r6 = inv_r2 * inv_r2 * inv_r2
+    return 4.0 * epsilon * (r6 * r6 - r6)
+
+@njit
+def single_atom_potential_njit(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential_njit) -> float:
+    """
+    Calculate the total potential of atom `idx` with all other atoms.
+    Compiled with Numba: zero temporary array allocations.
+    """
+    n_atoms = coords.shape[0]
+    xi, yi, zi = coords[idx, 0], coords[idx, 1], coords[idx, 2]
+    total = 0.0
+
+    for j in range(n_atoms):
+        if j == idx:
+            continue
+        dx = xi - coords[j, 0]
+        dy = yi - coords[j, 1]
+        dz = zi - coords[j, 2]
+        r = np.sqrt(dx * dx + dy * dy + dz * dz)
+        total += potential_func(r)
+
+    return total
+
 
 def lennard_jones_potential(r, epsilon=1.0, sigma=1.0):
     '''
@@ -147,7 +189,6 @@ def single_atom_potential(coords: np.ndarray, idx: int, potential_func=lennard_j
         Total potential of all other atoms with atom number idx.
     '''
 
-    coords = np.asarray(coords)
     diff = coords - coords[idx]
     dist = np.sqrt(np.sum(diff * diff, axis=1))
     return float(np.sum(potential_func(dist[dist>0]))) #Dont include the 0 distance from idx with itself
