@@ -151,7 +151,7 @@ def find_bonds_at_distance(coords, bond_dist, tol=0.05):
 
 def find_lj_bonds(coords, epsilon=1, sigma=1, tol=0.05):
     '''
-    Finds atom pairs separated by the equilibrium bond distance of a Lennard-Jones potential ($r_{eq} = 2^{1/6}\sigma$).
+    Finds atom pairs separated by the equilibrium bond distance of a Lennard-Jones potential r_eq = 2^(1/6)*sigma.
 
     :param np.ndarray, nx3 coords:
         The coordinate array for which the bonds will be found.
@@ -162,7 +162,7 @@ def find_lj_bonds(coords, epsilon=1, sigma=1, tol=0.05):
     :param float, default=0.05 tol:
         The maximum absolute difference between the equilibrium bond distance and atom distance for atoms to still be considered bonded.
     :returns tuple[np.ndarray, np.ndarray]:
-        - **lines** (*np.ndarray, nx3*): VTK-style connectivity array where each row is `[2, idx1, idx2]`, representing a 2-point line segment indexing into `bond_points`.
+        - **lines** (*np.ndarray, nx3*): VTK-style connectivity array where each row is [2, idx1, idx2], representing a 2-point line segment indexing into bond_points.
         
         - **bond_points** (*np.ndarray, nx2x3*): Flattened array of 3D endpoint coordinates for all detected bonds.
     '''
@@ -175,7 +175,7 @@ def find_op_bonds(coords, frequency=1, phase_shift=0, tol=0.05):
     Finds atom pairs separated by the equilibrium bond distances of an oscillating pair potential.
 
     .. warning::
-        This function is not yet implemented and will raise a ``NotImplementedError``.
+        This function is not yet implemented and will raise a NotImplementedError.
 
     :param np.ndarray, nx3 coords:
         The coordinate array for which the bonds will be found.
