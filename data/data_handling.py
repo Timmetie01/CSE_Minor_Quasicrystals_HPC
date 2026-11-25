@@ -12,7 +12,7 @@ RECORDS_DIR = DATA_DIR / "records"
 #The following constants define which methods and potentials are allowed in the folder structure.
 #These sets are imported throughout the project and tests, so only change when really necessary.
 ALLOWED_POTENTIALS = {"LJ", "OP", "raw_OP"}
-ALLOWED_METHODS = {"basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "simulated_annealing", "pure_lbfgs"}
+ALLOWED_METHODS = {"basin_hopping", "basin_hopping_ml", "genetic_algorithm", "parallel_tempering", "parallel_tempering_numba", "simulated_annealing", "pure_lbfgs"}
 
 def transform_LJwales_to_numpy():
     '''
