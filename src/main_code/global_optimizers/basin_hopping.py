@@ -1,10 +1,12 @@
 import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
+from src.main_code.local_optimizers.bfgs import LBFGS
 from sklearn.ensemble import RandomForestClassifier
 
-def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
-                  local_optimizer_wrapper: Callable, beta: float = 1.0, max_iter: int = 3000,
+
+def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
+                  local_optimizer: Callable = LBFGS, beta: float = 1.0, max_iter: int = 3000,
                   perturbation_type: str = "random", delta: float = 1.0) -> tuple[np.ndarray, float, int, int]:
     '''
     Performs global geometry optimization of a particle cluster using the
@@ -15,7 +17,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         The original coordinates are not modified.
     :param potential_function: callable
         Function calculating the pair potential between two particles.
-    :param local_optimizer_wrapper: callable
+    :param local_optimizer: callable
         Function that takes coordinates and returns locally optimized coordinates.
     :param beta: float
         Inverse temperature parameter used in the Metropolis criterion (1/(k_b*T)).
@@ -81,7 +83,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         raise ValueError("Coordinates must contain only finite values")
 
     # Initial local optimization
-    coords = local_optimizer_wrapper(coords)
+    coords = local_optimizer(coords)
     energy = pot.cluster_potential(coords, potential_function)
 
     best_coords = coords.copy()
@@ -98,7 +100,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
             pert_coords = random_perturbation(coords, delta)
 
         # Locally optimize perturbed coordinates
-        new_coords = local_optimizer_wrapper(pert_coords)
+        new_coords = local_optimizer(pert_coords)
         new_energy = pot.cluster_potential(new_coords, potential_function)
 
         delta_energy = new_energy - energy
