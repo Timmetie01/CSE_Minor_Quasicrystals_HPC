@@ -1,9 +1,14 @@
 import numpy as np
+import pandas as pd
+from pathlib import Path
 from collections.abc import Callable
-from src.main_code import potentials_calculations as pot
-from src.main_code.local_optimizers.bfgs import LBFGS
 from sklearn.ensemble import RandomForestClassifier
+from src.main_code.local_optimizers.bfgs import LBFGS
+from src.main_code import potentials_calculations as pot
 from src.main_code.global_optimizers import basin_hopping as bh
+from sklearn.model_selection import train_test_split, GroupShuffleSplit
+from sklearn.metrics import (accuracy_score, average_precision_score, roc_auc_score, classification_report,confusion_matrix)
+
 
 
 FEATURE_NAMES = [
@@ -696,68 +701,56 @@ def random_cluster(n_atoms: int,
 
     return np.array(coords)
 
-
-if __name__ == "__main__":
-    from src.main_code.local_optimizers.bfgs import LBFGS
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.model_selection import train_test_split, GroupShuffleSplit
-    from sklearn.metrics import (
-        accuracy_score,
-        average_precision_score,
-        roc_auc_score,
-        classification_report,
-        confusion_matrix
-    )
-    from pathlib import Path
-    import pandas as pd
-
-    N_BH = 30
-    N_ITER = 2000
-    N_ATOMS = 50
-
-    output_dir = Path("data/records/LJ/1.0_1.0/methods/ml_assisted_bh")
-
+def generate_data(n_atoms : int, n_bh_runs : int = 10, n_bh_iter : int = 500, output_dir : str = "data/records/LJ/1.0_1.0/methods/ml_assisted_bh" ):
+    output_dir = Path(output_dir)
     def local_optimizer(coords):
         return LBFGS(coords, pot.lennard_jones_derivative, print_convergence=False)
 
-    #obs_list = []
+    obs_list = []
 
-    # for i in range(N_BH):
+    for i in range(n_bh_runs):
 
-    #     initial_coords = random_cluster(
-    #         n_atoms=N_ATOMS,
-    #         characteristic_distance=2**(1/6),
-    #         density=0.5,
-    #         min_separation=0.8,
-    #         seed=i*10 + i
-    #     )
+        initial_coords = random_cluster(
+            n_atoms=n_atoms,
+            characteristic_distance=2**(1/6),
+            density=0.5,
+            min_separation=0.8,
+            seed=i*10 + i
+        )
 
 
-    #     best_coords, best_energy, n_iter, n_accepted, observations = basin_hopping_opt(
-    #         input_coords=initial_coords,
-    #         potential_function=pot.lennard_jones_potential,
-    #         local_optimizer_wrapper=local_optimizer,
-    #         beta=1.0,
-    #         max_iter=N_ITER,
-    #         delta=1,
-    #         record_run=True,
-    #         run_id= i
-    #     )
-    #     obs_list.extend(observations)
-    #     print(
-    #     f"Run {i+1}/{N_BH} | "
-    #     f"Best energy: {best_energy:.6f} | "
-    #     f"Accepted: {n_accepted}/{n_iter}")
+        best_coords, best_energy, n_iter, n_accepted, observations = basin_hopping_opt(
+            input_coords=initial_coords,
+            potential_function=pot.lennard_jones_potential,
+            local_optimizer_wrapper=local_optimizer,
+            beta=1.0,
+            max_iter=n_bh_iter,
+            delta=1,
+            record_run=True,
+            run_id= i
+        )
+        obs_list.extend(observations)
+        print(
+        f"Run {i+1}/{n_bh_runs} | "
+        f"Best energy: {best_energy:.6f} | "
+        f"Accepted: {n_accepted}/{n_iter}")
 
         
-    # df = pd.DataFrame(obs_list)
-    # df.to_csv(output_dir / f"ml_bh_50atoms_30runs_2000iter.csv", index=False)
+    df = pd.DataFrame(obs_list)
+    df.to_csv(output_dir / f"ml_bh_{n_atoms}atoms_{n_bh_runs}runs_{n_bh_iter}iter.csv", index=False)
 
-    file_path = Path("data/records/LJ/1.0_1.0/methods/ml_assisted_bh/ml_bh_50atoms_30runs_2000iter.csv")
+    print("File added to " + str(output_dir))
+
+
+
+def train_rf_model(n_atoms : int, n_bh_runs : int = 20, n_bh_iter : int = 1000, data_file_path : str = "data/records/LJ/1.0_1.0/methods/ml_assisted_bh"):
+    if(data_file_path == "data/records/LJ/1.0_1.0/methods/ml_assisted_bh"):
+        folder_path = Path(data_file_path)
+        file_path = folder_path / f"ml_bh_{n_atoms}atoms_{n_bh_runs}runs_{n_bh_iter}iter.csv"
+    else:
+        file_path = Path(data_file_path)
+
     df = pd.read_csv(file_path)
-
-    # print(df.head())
-    # print(df.shape)
 
     print("Dataset shape:", df.shape)
     print("Number of runs:", df["run_id"].nunique())
@@ -766,7 +759,7 @@ if __name__ == "__main__":
     print("Missing values:", df.isna().sum().sum())
 
     print("Near-zero energy changes:",
-      np.mean(np.abs(df["delta_energy"]) < 1e-5))
+        np.mean(np.abs(df["delta_energy"]) < 1e-5))
 
     print("\nSuccess rate per run:")
     print(df.groupby("run_id")["success"].mean())
@@ -792,6 +785,12 @@ if __name__ == "__main__":
     y_train = y.iloc[train_idx]
     y_test = y.iloc[test_idx]
 
+    print("Training success rate:", y_train.mean())
+    print("Testing success rate:", y_test.mean())
+
+    if y_train.nunique() < 2:
+        raise ValueError("Training data must contain both classes.")
+
     # Train Random Forest
     model = RandomForestClassifier(
         n_estimators=200,
@@ -802,21 +801,15 @@ if __name__ == "__main__":
 
     model.fit(X_train, y_train)
 
-    # Predict outcomes and probabilities
-    y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)[:, 1]
+    return model, X_test, y_test, X_train, y_train
 
-    # Evaluate
-    print("Test success rate:", y_test.mean())
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("ROC AUC:", roc_auc_score(y_test, y_prob))
-    print("Average precision:", average_precision_score(y_test, y_prob))
 
-    print("\nConfusion matrix:")
-    print(confusion_matrix(y_test, y_pred))
 
-    print("\nClassification report:")
-    print(classification_report(y_test, y_pred, zero_division=0))
+
+
+
+
+
 
 
         
