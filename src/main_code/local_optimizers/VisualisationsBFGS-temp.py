@@ -1,15 +1,18 @@
 import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
-from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, oscillating_pair_potential, oscillating_pair_derivative, cluster_potential
+from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, oscillating_pair_potential, oscillating_pair_derivative, cluster_potential, make_tapered_oscillating_pair_potential
 from src.main_code.local_optimizers.bfgs import BFGS
 
-def plot_potential(epsilon=1, sigma=1, frequency=1, phase_shift=0):
+def plot_potential(epsilon=1, sigma=1, frequency=7.5, phase_shift=0.59):
     r = np.arange(0.01, 6, 0.001)
     lj_arr = lennard_jones_potential(r, epsilon, sigma)
     op_arr = oscillating_pair_potential(r, frequency, phase_shift)
+    tap_op_pot = make_tapered_oscillating_pair_potential(frequency, phase_shift)
+    top_arr = tap_op_pot(r)
     plt.plot(r, lj_arr, color='darkblue', label='Lennard-Jones')
     plt.plot(r, op_arr, color='firebrick', label='Oscillating Pair')
+    plt.plot(r, top_arr, color='darkgreen', label='Tapered Oscillating Pair', linestyle='--')
     plt.ylabel("Potential (Dead Racoons)")
     plt.xlabel("Distance (??)")
     plt.grid(ls='--')
@@ -77,7 +80,7 @@ def plot_BFGS_convergence(coords_init, potential_func=lennard_jones_potential, p
 
 
 
-plot_potential(1/4, 1, 4, 1)
+plot_potential(1/4, 1, 7.5, 0.59)
 
 #coords = np.random.random((13,3)) * 3
 #plot_BFGS_convergence(coords)

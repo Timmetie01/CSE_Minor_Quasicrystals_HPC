@@ -180,11 +180,11 @@ def compare_near_global(glob_opt_coords, N):
         fire_times[i] = t.time() - t0
 
         t0 = t.time()
-        bfgs_opt = bfgs.BFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential)
+        bfgs_opt = bfgs.BFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential, print_convergence=False)
         bfgs_times[i] = t.time() - t0
 
         t0 = t.time()
-        lbfgs_opt = bfgs.LBFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential)
+        lbfgs_opt = bfgs.LBFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential, print_convergence=False)
         lbfgs_times[i] = t.time() - t0
 
         if fire_opt == pytest.approx(glob_opt_coords):
