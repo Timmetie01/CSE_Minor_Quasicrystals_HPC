@@ -517,6 +517,7 @@ if __name__ == "__main__":
     quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches (~30*N to 50*N so quenching stays cheap). 
     quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench (~30-40% of M, targeting replicas near/below melting)
     N_sweeps = 300 * (N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
+    #T_min and T_max in the line below are VERY IMPORTANT, because they are fixed, even with iterative temp updates
     temps = np.geomspace(0.04, 0.50, M)                     # Initial geometric ladder: T_min in deep solid (0.02-0.05), T_max above melting (~0.45-0.60)
     deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements scaled via equipartition d_ref * sqrt(T / T_min), with d_ref ~ 0.05-0.10
     d_min = 1e-4                                            # Lower bound on MC step size to prevent collapse if trapped at T_min
