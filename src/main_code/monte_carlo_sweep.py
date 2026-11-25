@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential, single_atom_potential
-
+from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential, single_atom_potential, lennard_jones_potential_njit, single_atom_potential_njit
+from numba import njit
 #More explanation can be found in chapter 3 of https://drive.google.com/file/d/1pxCWOTs2BM8Df1EvQv6NlNiXXUVjdwx8/view?usp=sharing
 
 
@@ -59,7 +59,7 @@ def mc_step(coords: np.ndarray, energy: float, beta: float, delta: float, R_c: f
 
 import math
 
-def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta: float, R_c: float, potential_func=lennard_jones_potential):
+def mc_sweep(coords: np.ndarray, energy: float, n_atoms: int, beta: float, n_moves: int, delta: float, R_c: float, potential_func=lennard_jones_potential):
     '''
     Performs n_moves Monte Carlo steps and tracks the best found potential energy. Updates coords in place.
 
@@ -67,6 +67,8 @@ def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta
         Coordinates of N particles in 3D space.
     :param energy: float,
         Potential energy of the system.
+    :param n_atoms: int,
+        Number of atoms.
     :param beta: float,
         Temperature dependeent constant of the system.
     :param n_moves: int,
@@ -79,10 +81,7 @@ def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta
         Maximum radius from the origin that atoms may move.
     :returns: tuple of (float, float, np.ndarray, int)
         Final potential energy, lowest potential energy found, coordinates of the lowest-energy state, and number of accepted steps.
-    :raises ValueError: 
-        if the input coordinates are not a 2D array with shape (N, 3).
     '''
-    n_atoms = len(coords)
     R_c_sq = R_c * R_c
     best_energy = energy
     best_coords = coords.copy()
@@ -114,5 +113,52 @@ def mc_sweep(coords: np.ndarray, energy: float, beta: float, n_moves: int, delta
                 best_coords = coords.copy()
         else:
             coords[idx] = old_pos #revert move if not accepted
+
+    return energy, best_energy, best_coords, n_accepted_steps
+
+@njit
+def mc_sweep_njit(
+    coords: np.ndarray,
+    energy: float,
+    n_atoms: int,
+    beta: float,
+    n_moves: int,
+    delta: float,
+    R_c: float,
+    potential_func_njit=lennard_jones_potential_njit,
+):
+    """
+    Performs n_moves Monte Carlo steps and tracks the best found potential energy.
+    Updates coords in place.
+    """
+    R_c_sq = R_c * R_c
+    best_energy = energy
+    best_coords = coords.copy()
+    n_accepted_steps = 0
+
+    for _ in range(n_moves):
+        idx = np.random.randint(0, n_atoms)
+        ox, oy, oz = coords[idx, 0], coords[idx, 1], coords[idx, 2]
+
+        nx = ox + np.random.uniform(-delta, delta)
+        ny = oy + np.random.uniform(-delta, delta)
+        nz = oz + np.random.uniform(-delta, delta)
+
+        if nx * nx + ny * ny + nz * nz > R_c_sq:
+            continue
+
+        old_energy_idx = single_atom_potential_njit(coords, idx, potential_func_njit)
+        coords[idx, 0], coords[idx, 1], coords[idx, 2] = nx, ny, nz
+        new_energy_idx = single_atom_potential_njit(coords, idx, potential_func_njit)
+        delta_energy = new_energy_idx - old_energy_idx
+
+        if delta_energy <= 0.0 or np.random.rand() < np.exp(-beta * delta_energy):
+            energy += delta_energy
+            n_accepted_steps += 1
+            if energy < best_energy:
+                best_energy = energy
+                best_coords = coords.copy()
+        else:
+            coords[idx, 0], coords[idx, 1], coords[idx, 2] = ox, oy, oz
 
     return energy, best_energy, best_coords, n_accepted_steps
