@@ -17,7 +17,7 @@
 23-11-2026 12:21:26  | N=  17 | LJ_1.0_1.0         | E =     -61.3179946601 | method = pure_lbfgs           | prev =     -60.3973815137 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:18  | N=  18 | LJ_1.0_1.0         | E =     -65.8423091551 | method = pure_lbfgs           | prev =     -64.0580729806 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:34  | N=  19 | LJ_1.0_1.0         | E =     -72.6597824544 | method = pure_lbfgs           | prev =     -69.8790338598 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
-23-11-2026 12:21:18  | N=  20 | LJ_1.0_1.0         | E =     -75.6384049546 | method = pure_lbfgs           | prev =     -75.5892891691 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
+25-11-2026 15:59:09  | N=  20 | LJ_1.0_1.0         | E =     -77.1770425683 | method = basin_hopping        | prev =     -75.6384049546 |      OVERALL BEST      | 
 23-11-2026 12:21:13  | N=  21 | LJ_1.0_1.0         | E =     -81.6514656016 | method = pure_lbfgs           | prev =     -76.9075982091 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:37  | N=  22 | LJ_1.0_1.0         | E =     -86.1400257494 | method = pure_lbfgs           | prev =     -86.0326424591 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:26  | N=  23 | LJ_1.0_1.0         | E =     -91.3680340365 | method = pure_lbfgs           | prev =     -90.7330513019 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
