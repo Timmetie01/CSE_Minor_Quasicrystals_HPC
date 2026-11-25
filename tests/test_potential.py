@@ -1,5 +1,17 @@
 import numpy as np
-from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, cluster_potential, cluster_potential_gradient
+from numba import njit
+from src.main_code.potentials_calculations import (
+    lennard_jones_potential,
+    lennard_jones_derivative,
+    single_atom_potential,
+    cluster_potential,
+    cluster_potential_gradient,
+    lennard_jones_potential_njit,
+    lennard_jones_derivative_njit,
+    single_atom_potential_njit,
+    cluster_potential_njit,
+    cluster_potential_gradient_njit,
+)
 import pytest
 import math as m
 
@@ -150,3 +162,86 @@ def test_gradient_with_table():
         [-lennard_jones_derivative(1),0,-lennard_jones_derivative(1)],
         [-lennard_jones_derivative(np.sqrt(2))/np.sqrt(2),0,lennard_jones_derivative(1) + lennard_jones_derivative(np.sqrt(2))/np.sqrt(2)]
     ]))
+
+
+# --- Single-atom potential and Numba (@njit) equivalence tests ---
+
+def test_single_atom_potential():
+    """Verify single_atom_potential matches manual pairwise sums and sums to 2 * cluster_potential."""
+    np.random.seed(42)
+    coords = np.random.rand(12, 3) * 4.0
+
+    # Single isolated atom has 0 interaction energy
+    assert single_atom_potential(np.array([[1.0, 2.0, 3.0]]), 0) == 0.0
+
+    # Check each atom against manual pairwise sum, and verify sum_i E_i == 2 * E_total
+    atom_energies = []
+    for idx in range(len(coords)):
+        expected = sum(
+            lennard_jones_potential(np.linalg.norm(coords[idx] - coords[j]))
+            for j in range(len(coords))
+            if j != idx
+        )
+        e_idx = single_atom_potential(coords, idx, lennard_jones_potential)
+        assert e_idx == pytest.approx(expected)
+        atom_energies.append(e_idx)
+
+    assert sum(atom_energies) == pytest.approx(2.0 * cluster_potential(coords, lennard_jones_potential))
+
+
+def test_njit_pair_potential_and_derivative_equivalence():
+    """Verify lennard_jones_potential_njit and lennard_jones_derivative_njit match their NumPy counterparts."""
+    radii = np.linspace(0.75, 4.0, 50)
+    for r in radii:
+        for eps, sig in [(1.0, 1.0), (2.5, 0.85)]:
+            assert lennard_jones_potential_njit(r, eps, sig) == pytest.approx(
+                lennard_jones_potential(r, eps, sig)
+            )
+            assert lennard_jones_derivative_njit(r, eps, sig) == pytest.approx(
+                lennard_jones_derivative(r, eps, sig)
+            )
+
+
+def test_njit_cluster_and_single_atom_potentials_equivalence():
+    """Verify cluster_potential_njit, single_atom_potential_njit, and cluster_potential_gradient_njit match Python versions."""
+    @njit
+    def custom_harmonic_njit(r):
+        return 0.5 * (r - 1.2) ** 2
+
+    @njit
+    def custom_harmonic_deriv_njit(r):
+        return r - 1.2
+
+    for n_atoms in [1, 2, 10, 35]:
+        np.random.seed(n_atoms)
+        coords = np.random.rand(n_atoms, 3) * 4.5
+
+        # Default Lennard-Jones potential and gradient
+        assert cluster_potential_njit(coords) == pytest.approx(cluster_potential(coords))
+        assert cluster_potential_gradient_njit(coords) == pytest.approx(cluster_potential_gradient(coords))
+
+        for idx in range(n_atoms):
+            assert single_atom_potential_njit(coords, idx) == pytest.approx(
+                single_atom_potential(coords, idx)
+            )
+
+        # Custom @njit pair potential & derivative injection
+        assert cluster_potential_njit(coords, custom_harmonic_njit) == pytest.approx(
+            cluster_potential(coords, lambda r: 0.5 * (r - 1.2) ** 2)
+        )
+        assert cluster_potential_gradient_njit(coords, custom_harmonic_deriv_njit) == pytest.approx(
+            cluster_potential_gradient(coords, lambda r: r - 1.2)
+        )
+        for idx in range(n_atoms):
+            assert single_atom_potential_njit(coords, idx, custom_harmonic_njit) == pytest.approx(
+                single_atom_potential(coords, idx, lambda r: 0.5 * (r - 1.2) ** 2)
+            )
+
+
+def test_njit_zero_distance_raises():
+    """Verify cluster_potential_njit and cluster_potential_gradient_njit raise ZeroDivisionError for overlapping particles."""
+    coords = np.array([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
+    with pytest.raises(ZeroDivisionError):
+        cluster_potential_njit(coords)
+    with pytest.raises(ZeroDivisionError):
+        cluster_potential_gradient_njit(coords)
