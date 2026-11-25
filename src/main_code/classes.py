@@ -1,17 +1,23 @@
 import numpy as np
 from src.main_code import potentials_calculations
 from src.main_code.local_optimizers import fire, bfgs
-from src.main_code.global_optimizers import basin_hopping, genetic_algorithm, parallel_tempering, simulated_annealing
+from src.main_code.global_optimizers import basin_hopping, genetic_algorithm, parallel_tempering, parallel_tempering_numba, simulated_annealing
 from collections.abc import Callable
 from data.data_handling import highscores
 from typing import Optional, Union
 
 class Potential:
-    def __init__(self, potential_func: Callable, potential_derivative: Callable, potential_str, potential_parameters):
+    def __init__(self, potential_func: Callable, potential_derivative: Callable, 
+                 potential_str: str, potential_parameters: tuple, 
+                 potential_func_njit: Callable | None = None, potential_derivative_njit: Callable | None = None, 
+                 ):
         self.potential_func = potential_func
         self.potential_derivative = potential_derivative
         self.potential_str = potential_str
         self.potential_parameters = potential_parameters
+        self.has_njit_funcs = potential_func_njit is not None and potential_derivative_njit is not None
+        self.potential_func_njit = potential_func_njit
+        self.potential_derivative_njit = potential_derivative_njit
 
     def potential(self, coords):
         return potentials_calculations.cluster_potential(coords, self.potential_func)
@@ -22,17 +28,23 @@ class Potential:
 def LennardJones(epsilon=1, sigma=1):
     potential_func = potentials_calculations.make_lennard_jones_potential(epsilon, sigma)
     potential_derivative = potentials_calculations.make_lennard_jones_derivative(epsilon, sigma)
-    return Potential(potential_func, potential_derivative, "LJ", (epsilon, sigma))
+    potential_func_njit = potentials_calculations.make_lennard_jones_potential_njit(epsilon, sigma)
+    potential_derivative_njit = potentials_calculations.make_lennard_jones_derivative_njit(epsilon, sigma)
+    return Potential(potential_func, potential_derivative, "LJ", (epsilon, sigma), potential_func_njit, potential_derivative_njit)
 
 def OscillatingPair(frequency, phase_shift):
     potential_func = potentials_calculations.make_tapered_oscillating_pair_potential(frequency, phase_shift)
     potential_derivative = potentials_calculations.make_tapered_oscillating_pair_derivative(frequency, phase_shift)
-    return Potential(potential_func, potential_derivative, "OP", (frequency, phase_shift))
+    potential_func_njit = potentials_calculations.make_tapered_oscillating_pair_potential_njit(frequency, phase_shift)
+    potential_derivative_njit = potentials_calculations.make_tapered_oscillating_pair_derivative_njit(frequency, phase_shift)
+    return Potential(potential_func, potential_derivative, "OP", (frequency, phase_shift), potential_func_njit, potential_derivative_njit)
 
 def RawOscillatingPair(frequency, phase_shift):
     potential_func = potentials_calculations.make_oscillating_pair_potential(frequency, phase_shift)
     potential_derivative = potentials_calculations.make_oscillating_pair_derivative(frequency, phase_shift)
-    return Potential(potential_func, potential_derivative, "raw_OP", (frequency, phase_shift))
+    potential_func_njit = potentials_calculations.make_oscillating_pair_potential_njit(frequency, phase_shift)
+    potential_derivative_njit = potentials_calculations.make_oscillating_pair_derivative_njit(frequency, phase_shift)
+    return Potential(potential_func, potential_derivative, "raw_OP", (frequency, phase_shift), potential_func_njit, potential_derivative_njit)
 
 
 class Optimizer:
@@ -56,6 +68,9 @@ class Optimizer:
         self.potential_derivative = Potential.potential_derivative
         self.potential_str = Potential.potential_str
         self.potential_parameters = Potential.potential_parameters
+        self.has_njit_funcs = Potential.has_njit_funcs
+        self.potential_func_njit = Potential.potential_func_njit
+        self.potential_derivative_njit = Potential.potential_derivative_njit
 
     # =========================================================================
     # Local Optimizers
@@ -542,6 +557,166 @@ class Optimizer:
             opt_coords = opt_wrapper(opt_coords)
 
         self._log_highscore(opt_coords, "parallel_tempering", log_info)
+        return opt_coords
+
+    def parallel_tempering_numba(
+        self,
+        N_atoms: int,
+        M: Optional[int] = None,
+        temps: Union[str, np.ndarray] = "Auto",
+        T_min: float = 0.04,
+        T_max: float = 0.50,
+        rho_bounds: tuple[float, float] = (-10.0, 10.0),
+        deltas: Union[str, np.ndarray] = "Auto",
+        d_ref: float = 0.08,
+        T_ref: Optional[float] = None,
+        d_min: float = 1e-4,
+        d_max: Optional[float] = None,
+        R_c: Optional[float] = None,
+        swap_every: int = 3,
+        target_accept_rate: float = 0.234,
+        gamma_scale: float = 0.5,
+        gamma_offset: float = 50.0,
+        gamma_decay: float = 0.6,
+        quench_every: Optional[int] = None,
+        quench_lowest_n: Optional[int] = None,
+        N_sweeps: Optional[int] = None,
+        print_progress: bool = False,
+        adapt_fraction: float = 1.0,
+        potential_func_njit: Callable = potentials_calculations.lennard_jones_potential_njit,
+        potential_derivative_njit: Callable = potentials_calculations.lennard_jones_derivative_njit,
+        local_optimisor_njit: Callable = bfgs.lbfgs_njit,
+        log_info: Optional[str] = "",
+    ) -> np.ndarray:
+        """
+        Perform global geometry optimization of a particle cluster using Numba-accelerated
+        adaptive Parallel Tempering (Replica Exchange) Monte Carlo with periodic L-BFGS quenching.
+
+        Parameters left as ``None`` automatically scale with ``N_atoms`` using the
+        recommended defaults from ``parallel_tempering_numba.py``.
+
+        :param N_atoms: int
+            Number of particles in the cluster.
+        :param M: int or None, optional
+            Number of temperature replicas. If None, defaults to ``max(6, int(round(3.0 * np.sqrt(N_atoms))))``.
+        :param temps: "Auto" or array_like of shape (M,), optional
+            Strictly increasing temperature ladder on ``[T_min, T_max]``. If ``"Auto"``,
+            generates ``np.geomspace(T_min, T_max, M)``. Default is ``"Auto"``.
+        :param T_min: float, optional
+            Fixed lowest temperature endpoint used when ``temps="Auto"``. Default is 0.04.
+        :param T_max: float, optional
+            Fixed highest temperature endpoint used when ``temps="Auto"``. Default is 0.50.
+        :param rho_bounds: tuple of (float, float), optional
+            Lower and upper bounds ``(rho_min, rho_max)`` on the log temperature spacings.
+            Default is ``(-10.0, 10.0)``.
+        :param deltas: "Auto" or array_like of shape (M,), optional
+            Initial maximum single-atom displacement per temperature slot. If ``"Auto"``,
+            computes ``make_deltas(temps, d_ref, T_ref)``. Default is ``"Auto"``.
+        :param d_ref: float, optional
+            Reference step size at ``T_ref`` when ``deltas="Auto"``. Default is 0.08.
+        :param T_ref: float or None, optional
+            Reference temperature for ``d_ref`` when ``deltas="Auto"``. If None, defaults to ``temps[0]``.
+        :param d_min: float, optional
+            Minimum allowed single-atom displacement step size during adaptation. Default is 1e-4.
+        :param d_max: float or None, optional
+            Maximum allowed single-atom displacement step size during adaptation.
+            If None, defaults to ``R_c``.
+        :param R_c: float or None, optional
+            Confining spherical container radius for the cluster. If None, defaults to
+            ``round(1.3 * (N_atoms ** (1.0 / 3.0)), 2)``.
+        :param swap_every: int, optional
+            Frequency (in sweeps) at which adjacent temperature swaps and adaptations are attempted.
+            Default is 3.
+        :param target_accept_rate: float, optional
+            Target Monte Carlo step acceptance probability in ``(0, 1)`` for Robbins-Monro
+            step-size adaptation. Default is 0.234.
+        :param gamma_scale: float, optional
+            Initial Robbins-Monro gain ``a`` in ``gamma_n = a / (n + offset) ** decay``.
+            Default is 0.5.
+        :param gamma_offset: float, optional
+            Stabilization offset ``n_0`` in the Robbins-Monro step-size schedule. Default is 50.0.
+        :param gamma_decay: float, optional
+            Decay exponent ``kappa`` in ``(0.5, 1.0]`` in the Robbins-Monro step-size schedule.
+            Default is 0.6.
+        :param quench_every: int or None, optional
+            Frequency (in sweeps) at which low-temperature replicas are quenched via
+            ``local_optimisor_njit``. If None, defaults to ``40 * N_atoms``.
+        :param quench_lowest_n: int or None, optional
+            Number of lowest-temperature slots to quench at each periodic quenching step.
+            If None, defaults to ``max(2, int(round(0.35 * M)))``.
+        :param N_sweeps: int or None, optional
+            Total number of Monte Carlo sweeps per replica. If None, defaults to ``100 * (N_atoms ** 2)``.
+        :param print_progress: bool, optional
+            If True, prints progress updates every 100 sweeps. Default is False.
+        :param adapt_fraction: float, optional
+            Fraction in ``[0, 1]`` of ``N_sweeps`` during which temperatures and step sizes
+            are adapted before freezing. Default is 1.0.
+        :param potential_func_njit: callable, optional
+            Numba-compiled scalar pair potential function ``V(r)``.
+            Default is ``lennard_jones_potential_njit``.
+        :param potential_derivative_njit: callable, optional
+            Numba-compiled scalar pair potential derivative ``dV/dr``.
+            Default is ``lennard_jones_derivative_njit``.
+        :param local_optimisor_njit: callable, optional
+            Numba-compiled local optimizer used for quenching replicas. Default is ``lbfgs_njit``.
+        :param log_info: str or None, optional
+            Metadata string logged to ``highscores``. Set to None to disable logging.
+            Default is ``""``.
+        :returns: ndarray, shape (N_atoms, 3)
+            Coordinates of the lowest-energy quenched configuration found.
+        """
+        if M is None:
+            M = max(6, int(round(3.0 * np.sqrt(N_atoms))))
+        if R_c is None:
+            R_c = round(1.3 * (N_atoms ** (1.0 / 3.0)), 2)
+        if d_max is None:
+            d_max = R_c
+        if quench_every is None:
+            quench_every = 40 * N_atoms
+        if quench_lowest_n is None:
+            quench_lowest_n = max(2, int(round(0.35 * M)))
+        if N_sweeps is None:
+            N_sweeps = 100 * (N_atoms ** 2)
+
+        cluster_pot_fn = lambda coords: potentials_calculations.cluster_potential(
+            coords, self.potential_func
+        )
+        energies, coords = parallel_tempering_numba.make_start(
+            N_atoms, M, R_c, cluster_pot_fn
+        )
+
+        if isinstance(temps, str) and temps == "Auto":
+            temps = np.geomspace(T_min, T_max, M)
+        if isinstance(deltas, str) and deltas == "Auto":
+            ref_temp = float(temps[0]) if T_ref is None else T_ref
+            deltas = parallel_tempering_numba.make_deltas(temps, d_ref, ref_temp)
+
+        _, opt_coords = parallel_tempering_numba.parallel_tempering_run(
+            coords,
+            energies,
+            M=M,
+            temps=temps,
+            rho_bounds=rho_bounds,
+            deltas=deltas,
+            d_min=d_min,
+            d_max=d_max,
+            R_c=R_c,
+            swap_every=swap_every,
+            target_accept_rate=target_accept_rate,
+            gamma_scale=gamma_scale,
+            gamma_offset=gamma_offset,
+            gamma_decay=gamma_decay,
+            quench_every=quench_every,
+            quench_lowest_n=quench_lowest_n,
+            N_sweeps=N_sweeps,
+            print_progress=print_progress,
+            adapt_fraction=adapt_fraction,
+            potential_func_njit=potential_func_njit,
+            potential_derivative_njit=potential_derivative_njit,
+            local_optimisor_njit=local_optimisor_njit,
+        )
+
+        self._log_highscore(opt_coords, "parallel_tempering_numba", log_info)
         return opt_coords
 
     def simulated_annealing(
