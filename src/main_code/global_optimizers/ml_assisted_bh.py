@@ -1,6 +1,7 @@
 import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
+from src.main_code.local_optimizers.bfgs import LBFGS
 from sklearn.ensemble import RandomForestClassifier
 from src.main_code.global_optimizers import basin_hopping as bh
 
@@ -436,8 +437,8 @@ def create_observation(
 
 
 
-def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
-                      local_optimizer_wrapper: Callable, beta: float =1.0, max_iter: int = 3000,
+def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
+                      local_optimizer_wrapper: Callable = LBFGS, beta: float =1.0, max_iter: int = 3000,
                       perturbation_type: str = "random", delta: float = 1.0, record_run : bool = False,
                       run_id: int | None = None) -> tuple[np.ndarray, float, int, int] | tuple[np.ndarray, float, int, int, list[dict]]:
     
@@ -451,8 +452,10 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         The original coordinates are not modified.
     :param potential_function: callable
         Function calculating the pair potential between two particles.
+        Default is Lennard Jones
     :param local_optimizer_wrapper: callable
         Function that takes coordinates and returns locally optimized coordinates.
+        Default is LBFGS
     :param beta: float
         Inverse temperature parameter used in the Metropolis criterion (1/(k_b*T)).
         Must be finite and non-negative. Default is 1
