@@ -86,6 +86,16 @@ def test_optimizers_callable():
     )
     _assert_valid_coords(res_pt, "parallel_tempering")
 
+    res_pt_numba = opt.parallel_tempering_numba(
+        n_atoms,
+        M=3,
+        R_c=3.0,
+        swap_every=2,
+        N_sweeps=50,
+        log_info=None,
+    )
+    _assert_valid_coords(res_pt_numba, "parallel_tempering_numba")
+
     res_sa = opt.simulated_annealing(
         n_atoms,
         local_optimizer="FIRE",
