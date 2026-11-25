@@ -53,3 +53,26 @@
 
 
 24-11-2026 21:40:09  | N=  55 | LJ_1.0_1.0         | E =    -279.2484704630 | method = parallel_tempering   |                           |     FIRST ATTEMPT      | First attempt of PT using numba
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+25-11-2026 13:26:44  | N=  78 | LJ_1.0_1.0         | E =    -414.5326817922 | method = parallel_tempering   |                           |     FIRST ATTEMPT      | First attempt of PT using numba

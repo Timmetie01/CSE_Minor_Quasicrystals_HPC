@@ -18,7 +18,7 @@ from data.data_handling import highscores, read_LJwales_data
 
 
 @njit
-def _check_interrupt():
+def _check_interrupt(): #Lets you exit njit run with ctrl c
     with objmode():
         pass  # Entering objmode acquires the GIL and triggers any pending KeyboardInterrupt
 
@@ -126,6 +126,7 @@ def update_temp_ladder_njit(
 def _pt_loop_njit(
     coords_lst,
     energies_lst,
+    best_coords_out,
     wales_energy,
     M,
     temps_arr,
@@ -175,6 +176,7 @@ def _pt_loop_njit(
             best_energy = energies_lst[m]
             best_idx = m
     best_coords = coords_lst[best_idx].copy()
+    best_coords_out[:] = best_coords
 
     for i in range(N_sweeps):
         for j in range(M):
@@ -194,6 +196,7 @@ def _pt_loop_njit(
             if low_en < best_energy:
                 best_energy = low_en
                 best_coords = low_en_coords.copy()
+                best_coords_out[:] = best_coords
 
         if (i + 1) % swap_every == 0:
             for m in range(M):
@@ -242,10 +245,12 @@ def _pt_loop_njit(
                 if q_energy < best_energy:
                     best_energy = q_energy
                     best_coords = q_coords
-        if print_progress and(i + 1) % 100 == 0:
+                    best_coords_out[:] = best_coords
+        if (i + 1) % 100 == 0:
             _check_interrupt()
-            pct = int(round(100.0 * (i + 1) / N_sweeps))
-            print("Progress:", pct, "% | Sweep:", i + 1, "/", N_sweeps, "| Best energy:", best_energy, "| Wales LJ energy:", wales_energy)
+            if print_progress:
+                pct = int(round(100.0 * (i + 1) / N_sweeps))
+                print("Progress:", pct, "% | Sweep:", i + 1, "/", N_sweeps, "| Best energy:", best_energy, "| Wales LJ energy:", wales_energy)
     print("Temperatures at end", temps_arr)
     #Quench:
     final_coords, final_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
@@ -471,31 +476,39 @@ def parallel_tempering_run(
         raise ValueError("start_energies must contain only finite values")
 
     wales_energy = cluster_potential(read_LJwales_data(len(coords_lst[0])), lennard_jones_potential)
-    best_energy, best_coords = _pt_loop_njit(
-        coords_lst,
-        energies_lst,
-        wales_energy,
-        int(M),
-        temps_arr,
-        rho_bounds_tuple,
-        deltas_arr,
-        float(d_min),
-        float(d_max),
-        float(R_c),
-        int(swap_every),
-        float(target_accept_rate),
-        float(gamma_scale),
-        float(gamma_offset),
-        float(gamma_decay),
-        None if quench_every is None else int(quench_every),
-        int(quench_lowest_n),
-        int(N_sweeps),
-        print_progress,
-        float(adapt_fraction),
-        potential_func_njit,
-        potential_derivative_njit,
-        local_optimisor_njit,
-    )
+    best_coords_out = np.empty_like(coords_lst[0])
+    try:
+        best_energy, best_coords = _pt_loop_njit(
+                coords_lst,
+                energies_lst,
+                best_coords_out,
+                wales_energy,
+                int(M),
+                temps_arr,
+                rho_bounds_tuple,
+                deltas_arr,
+                float(d_min),
+                float(d_max),
+                float(R_c),
+                int(swap_every),
+                float(target_accept_rate),
+                float(gamma_scale),
+                float(gamma_offset),
+                float(gamma_decay),
+                None if quench_every is None else int(quench_every),
+                int(quench_lowest_n),
+                int(N_sweeps),
+                print_progress,
+                float(adapt_fraction),
+                potential_func_njit,
+                potential_derivative_njit,
+                local_optimisor_njit,
+            )
+    except KeyboardInterrupt:
+        print("\nInterrupted! Returning best coordinates found so far.")
+        best_coords, best_energy, _, _ = local_optimisor_njit(
+            best_coords_out, potential_derivative_njit, potential_func_njit
+        )
     return float(best_energy), best_coords
 
 
@@ -528,13 +541,13 @@ def make_start(N, M, R_c, cluster_pot_func):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    N = 51                                                  # Number of atoms in the cluster 
+    N = 78                                                  # Number of atoms in the cluster 
     M = max(6, int(round(3.0 * np.sqrt(N))))                # Number of replicas; scales as ~3*sqrt(N) to keep adjacent energy overlap constant
     R_c = round(1.3 * (N ** (1.0 / 3.0)), 2)                # Confining sphere radius (~1.3 * N^(1/3)): prevents evaporation without pinning surface atoms
     swap_every = 3                                          # Sweeps between swap attempts, should be usually between 1 and 20
     quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches (~30*N to 50*N so quenching stays cheap). 
     quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench (~30-40% of M, targeting replicas near/below melting)
-    N_sweeps = 100*(N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
+    N_sweeps = 200*(N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
     #T_min and T_max in the line below are VERY IMPORTANT, because they are fixed, even with iterative temp updates
     temps = np.geomspace(0.04, 0.50, M)                     # Initial geometric ladder: T_min in deep solid (0.02-0.05), T_max above melting (~0.45-0.60)
     deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements scaled via equipartition d_ref * sqrt(T / T_min), with d_ref ~ 0.05-0.10
