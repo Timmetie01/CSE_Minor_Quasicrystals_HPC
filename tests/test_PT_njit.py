@@ -7,7 +7,7 @@ from src.main_code.potentials_calculations import (
     lennard_jones_potential_njit,
     lennard_jones_derivative_njit,
 )
-from src.main_code.global_optimizers.parallel_tempering import (
+from src.main_code.global_optimizers.parallel_tempering_numba import (
     attempt_temp_swaps_njit,
     temps_to_rho,
     update_temp_ladder_njit,
@@ -19,7 +19,7 @@ from src.main_code.local_optimizers.bfgs import lbfgs_njit
 from src.main_code.local_optimizers.fire import FIRE
 
 
-def _default_pt_kwargs(M, temps, deltas, R_c=2.5, N_sweeps=10):
+def _default_pt_kwargs(M, temps, deltas, R_c=2.5, N_sweeps=10, print_progress=False):
     """Helper returning valid default keyword arguments for parallel_tempering_run."""
     return dict(
         M=M,
@@ -37,6 +37,7 @@ def _default_pt_kwargs(M, temps, deltas, R_c=2.5, N_sweeps=10):
         quench_every=None,
         quench_lowest_n=2,
         N_sweeps=N_sweeps,
+        print_progress=print_progress,
         adapt_fraction=1.0,
         potential_func_njit=lennard_jones_potential_njit,
         potential_derivative_njit=lennard_jones_derivative_njit,
@@ -275,7 +276,7 @@ def test_pt_does_not_mutate_inputs_and_returns_valid_state():
     temps_before = temps.copy()
     deltas_before = deltas.copy()
 
-    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=50)
+    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=50, print_progress=False)
     kw["quench_every"] = 25
     best_e, best_c = parallel_tempering_run(coords, energies, **kw)
 
@@ -305,7 +306,7 @@ def test_pt_finds_lj6_global_minimum():
     deltas = make_deltas(temps, 0.08, temps[0])
     energies, coords = make_start(N, M, R_c, cluster_potential)
 
-    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=1500)
+    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=1500, print_progress=False)
     kw["swap_every"] = 10
     kw["quench_every"] = 250
     kw["quench_lowest_n"] = 3
@@ -359,7 +360,7 @@ def test_pt_escape_local_minima_lj7_cluster():
     start_coords = np.repeat(local_min_coords[np.newaxis, :, :], M, axis=0)
     start_energies = np.full(M, local_min_energy)
 
-    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=1500)
+    kw = _default_pt_kwargs(M, temps, deltas, R_c=R_c, N_sweeps=1500, print_progress=False)
     kw["swap_every"] = 10
     kw["quench_every"] = 250
     kw["quench_lowest_n"] = 3
