@@ -1,48 +1,6 @@
 from matplotlib.pylab import norm
 import numpy as np
 from numba import njit
-
-@njit
-def lennard_jones_potential_njit(r, epsilon=1.0, sigma=1.0):
-    '''
-    Calculate the Lennard-Jones potential for a given distance inside an njit loop.
-
-    :param r: float or array_like, 
-        Distance between two particles.
-    :param epsilon: float, optional, 
-        Depth of the potential well.
-    :param sigma: float, optional, 
-        Finite distance at which the inter-particle potential is zero.
-    :returns: float or array_like,
-        Lennard-Jones potential at distance r.
-    '''
-    inv_r = sigma / r
-    inv_r2 = inv_r * inv_r
-    r6 = inv_r2 * inv_r2 * inv_r2
-    return 4.0 * epsilon * (r6 * r6 - r6)
-
-@njit
-def single_atom_potential_njit(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential_njit) -> float:
-    """
-    Calculate the total potential of atom `idx` with all other atoms.
-    Compiled with Numba: zero temporary array allocations.
-    """
-    n_atoms = coords.shape[0]
-    xi, yi, zi = coords[idx, 0], coords[idx, 1], coords[idx, 2]
-    total = 0.0
-
-    for j in range(n_atoms):
-        if j == idx:
-            continue
-        dx = xi - coords[j, 0]
-        dy = yi - coords[j, 1]
-        dz = zi - coords[j, 2]
-        r = np.sqrt(dx * dx + dy * dy + dz * dz)
-        total += potential_func(r)
-
-    return total
-
-
 def lennard_jones_potential(r, epsilon=1.0, sigma=1.0):
     '''
     Calculate the Lennard-Jones potential for a given distance.
@@ -262,3 +220,142 @@ def cluster_potential_gradient(coords, potential_derivative=lennard_jones_deriva
     return np.sum(relative_distances / norm_distances * potential_derivative(norm_distances), 1)
 
 
+@njit
+def lennard_jones_potential_njit(r, epsilon=1.0, sigma=1.0):
+    '''
+    Calculate the Lennard-Jones potential for a given distance inside an njit loop.
+
+    :param r: float or array_like, 
+        Distance between two particles.
+    :param epsilon: float, optional, 
+        Depth of the potential well.
+    :param sigma: float, optional, 
+        Finite distance at which the inter-particle potential is zero.
+    :returns: float or array_like,
+        Lennard-Jones potential at distance r.
+    '''
+    inv_r = sigma / r
+    inv_r2 = inv_r * inv_r
+    r6 = inv_r2 * inv_r2 * inv_r2
+    return 4.0 * epsilon * (r6 * r6 - r6)
+
+@njit
+def lennard_jones_derivative_njit(r: float, epsilon: float = 1.0, sigma: float = 1.0) -> float:
+    """
+    Calculate the derivative of the Lennard-Jones potential for a given distance w.r.t. r.
+
+    :param r: float
+        Distance between two particles.
+    :param epsilon: float, optional
+        Depth of the potential well.
+    :param sigma: float, optional
+        Finite distance at which the inter-particle potential is zero.
+    :returns: float
+        Lennard-Jones potential's derivative at distance r.
+    """
+    r1 = sigma / r
+    r2 = r1 * r1
+    r6 = r2 * r2 * r2
+    return 24.0 * epsilon / sigma * r6 * r1 * (1.0 - 2.0 * r6)
+
+@njit
+def single_atom_potential_njit(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential_njit) -> float:
+    """
+    Calculate the total potential of atom `idx` with all other atoms.
+    Compiled with Numba: zero temporary array allocations.
+    """
+    n_atoms = coords.shape[0]
+    xi, yi, zi = coords[idx, 0], coords[idx, 1], coords[idx, 2]
+    total = 0.0
+
+    for j in range(n_atoms):
+        if j == idx:
+            continue
+        dx = xi - coords[j, 0]
+        dy = yi - coords[j, 1]
+        dz = zi - coords[j, 2]
+        r = np.sqrt(dx * dx + dy * dy + dz * dz)
+        total += potential_func(r)
+
+    return total
+
+
+@njit
+def cluster_potential_njit(
+    coords: np.ndarray,
+    potential_func=lennard_jones_potential_njit,
+) -> float:
+    """
+    Calculate the total potential for a cluster of particles in 3D space.
+
+    :param coords: ndarray, shape (N, 3)
+        Coordinates of N particles in 3D space.
+    :param potential_func: @njit callable, optional
+        Scalar function calculating the pair potential V(r) between two particles.
+    :returns: float
+        Total potential energy of the cluster.
+    """
+    n_atoms = coords.shape[0]
+    total_energy = 0.0
+
+    for i in range(n_atoms - 1):
+        xi = coords[i, 0]
+        yi = coords[i, 1]
+        zi = coords[i, 2]
+        for j in range(i + 1, n_atoms):
+            dx = xi - coords[j, 0]
+            dy = yi - coords[j, 1]
+            dz = zi - coords[j, 2]
+            r = np.sqrt(dx * dx + dy * dy + dz * dz)
+            if r == 0.0:
+                raise ZeroDivisionError("Two particles occupy the exact same position (r = 0).")
+            total_energy += potential_func(r)
+
+    return total_energy
+
+
+@njit
+def cluster_potential_gradient_njit(
+    coords: np.ndarray,
+    potential_derivative=lennard_jones_derivative_njit,
+) -> np.ndarray:
+    """
+    Calculate the gradient of the potential energy for a cluster of particles.
+
+    :param coords: ndarray, shape (N, 3)
+        Coordinates of N particles in 3D space.
+    :param potential_derivative: @njit callable, optional
+        Scalar function calculating dV/dr with respect to inter-particle distance r.
+    :returns: ndarray, shape (N, 3)
+        Gradient of the potential for each particle.
+    """
+    n_atoms = coords.shape[0]
+    grad = np.zeros((n_atoms, 3), dtype=np.float64)
+
+    for i in range(n_atoms - 1):
+        xi = coords[i, 0]
+        yi = coords[i, 1]
+        zi = coords[i, 2]
+        for j in range(i + 1, n_atoms):
+            dx = xi - coords[j, 0]
+            dy = yi - coords[j, 1]
+            dz = zi - coords[j, 2]
+            r = np.sqrt(dx * dx + dy * dy + dz * dz)
+            if r == 0.0:
+                raise ZeroDivisionError("Two particles occupy the exact same position (r = 0).")
+
+            # Unit vector (r_i - r_j) / r scaled by dV/dr
+            scale = potential_derivative(r) / r
+            gx = scale * dx
+            gy = scale * dy
+            gz = scale * dz
+
+            grad[i, 0] += gx
+            grad[i, 1] += gy
+            grad[i, 2] += gz
+
+            grad[j, 0] -= gx
+            grad[j, 1] -= gy
+            grad[j, 2] -= gz
+
+    return grad

@@ -230,7 +230,7 @@ def _pt_loop_njit(
     return best_energy, best_coords
 
 
-def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, quench_every, N_sweeps, adapt_fraction, potential_func, local_optimisor):
+def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, quench_every, N_sweeps, adapt_fraction, potential_func, local_optimisor_njit):
     """
     Runs a parallel tempering Monte Carlo simulation across M temperature replicas
     to search for the global minimum potential energy.

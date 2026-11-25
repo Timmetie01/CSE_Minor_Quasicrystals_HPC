@@ -1,5 +1,5 @@
-from src.main_code.local_optimizers import fire, bfgs
-from src.main_code.potentials_calculations import cluster_potential, lennard_jones_derivative
+from src.main_code.local_optimizers import fire, bfgs, LBFGS, lbfgs_njit
+from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential, lennard_jones_derivative, cluster_potential_njit, lennard_jones_potential_njit, lennard_jones_derivative_njit
 import numpy as np
 import pytest
 
@@ -784,3 +784,81 @@ def test_Lbfgs_table():
 
     coords += np.random.random((150, 3)) * 0.2
     assert cluster_potential(bfgs.LBFGS(coords, lennard_jones_derivative)) == pytest.approx(-893.310258)
+
+def test_lbfgs_njit_matches_lbfgs():
+    """
+    Verify that the @njit L-BFGS implementation produces the same minimized energy,
+    convergence status, and internal geometry as the reference Python L-BFGS.
+    """
+    np.random.seed(42)
+
+    # 1. Small clusters (N = 1, 2, 3, 4, 5)
+    for n_atoms in [1, 2, 3, 4, 5]:
+        coords = np.random.uniform(-1.5, 1.5, size=(n_atoms, 3))
+        coords_ref_in = coords.copy()
+        coords_njit_in = coords.copy()
+
+        res_ref = bfgs.LBFGS(
+            coords_ref_in,
+            lennard_jones_derivative,
+            lennard_jones_potential,
+            tol=1e-6,
+            max_iter=1000,
+            print_convergence=False,
+        )
+        res_njit, e_njit, _, converged = lbfgs_njit(
+            coords_njit_in,
+            lennard_jones_derivative_njit,
+            lennard_jones_potential_njit,
+            tol=1e-6,
+            max_iter=1000,
+        )
+
+        e_ref = cluster_potential(res_ref)
+        assert converged
+        assert e_njit == pytest.approx(e_ref, abs=1e-8)
+        assert cluster_potential(res_njit) == pytest.approx(e_ref, abs=1e-8)
+
+        # Ensure input arrays were not mutated in place
+        np.testing.assert_array_equal(coords_ref_in, coords)
+        np.testing.assert_array_equal(coords_njit_in, coords)
+
+    # 2. Perturbed N = 10 minimum (same setup as test_Lbfgs_table)
+    coords_10 = np.array([
+        [-0.112678561569957,  1.154350068036701, -0.194840194577019],
+        [ 0.455529927957375, -0.141698933988423,  1.074987039970359],
+        [-1.076845089999501, -0.472850203002737, -0.000759561321676],
+        [ 0.772283646029137,  0.650565133523509,  0.318426126854726],
+        [-0.156611774846419, -0.917108951862921,  0.505406908904027],
+        [-0.704034080497556,  0.331528029107990, -0.717967548406147],
+        [ 0.749396644213383, -0.438279561655135,  0.048302291736783],
+        [-0.145155893839899, -0.631595300103604, -0.579684879295956],
+        [ 0.417694325594403,  0.318313250559209, -0.692983073948749],
+        [-0.199579143040966,  0.146776469285409,  0.239112890083650],
+    ], dtype=float)
+    coords_10 += np.random.random((10, 3)) * 0.2
+
+    res_ref_10 = bfgs.LBFGS(
+        coords_10.copy(),
+        lennard_jones_derivative,
+        lennard_jones_potential,
+        tol=1e-6,
+        max_iter=1000,
+        print_convergence=False,
+    )
+    res_njit_10, e_njit_10, _, converged_10 = lbfgs_njit(
+        coords_10.copy(),
+        lennard_jones_derivative_njit,
+        lennard_jones_potential_njit,
+        tol=1e-6,
+        max_iter=1000,
+    )
+
+    assert converged_10
+    assert e_njit_10 == pytest.approx(cluster_potential(res_ref_10), abs=1e-7)
+    assert e_njit_10 == pytest.approx(-28.422532, abs=1e-5)
+
+    # Compare sorted pairwise distance matrices (invariant to rotation/permutation)
+    dists_ref = np.sort(np.linalg.norm(res_ref_10[:, None, :] - res_ref_10[None, :, :], axis=-1).ravel())
+    dists_njit = np.sort(np.linalg.norm(res_njit_10[:, None, :] - res_njit_10[None, :, :], axis=-1).ravel())
+    np.testing.assert_allclose(dists_njit, dists_ref, atol=1e-5)

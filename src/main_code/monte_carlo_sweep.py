@@ -125,7 +125,7 @@ def mc_sweep_njit(
     n_moves: int,
     delta: float,
     R_c: float,
-    potential_func=lennard_jones_potential_njit,
+    potential_func_njit=lennard_jones_potential_njit,
 ):
     """
     Performs n_moves Monte Carlo steps and tracks the best found potential energy.
@@ -147,9 +147,9 @@ def mc_sweep_njit(
         if nx * nx + ny * ny + nz * nz > R_c_sq:
             continue
 
-        old_energy_idx = single_atom_potential_njit(coords, idx, potential_func)
+        old_energy_idx = single_atom_potential_njit(coords, idx, potential_func_njit)
         coords[idx, 0], coords[idx, 1], coords[idx, 2] = nx, ny, nz
-        new_energy_idx = single_atom_potential_njit(coords, idx, potential_func)
+        new_energy_idx = single_atom_potential_njit(coords, idx, potential_func_njit)
         delta_energy = new_energy_idx - old_energy_idx
 
         if delta_energy <= 0.0 or np.random.rand() < np.exp(-beta * delta_energy):
