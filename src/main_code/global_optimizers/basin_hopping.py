@@ -1,7 +1,6 @@
 import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
-from sklearn.ensemble import RandomForestClassifier
 
 def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
                   local_optimizer_wrapper: Callable, beta: float, max_iter: int,
