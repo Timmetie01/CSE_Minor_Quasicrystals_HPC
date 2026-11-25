@@ -771,54 +771,54 @@ if __name__ == "__main__":
     print("\nSuccess rate per run:")
     print(df.groupby("run_id")["success"].mean())
 
-# Select inputs and dependent variable
-X = df[FEATURE_NAMES]
-y = df["success"].astype(int)
+    # Select inputs and dependent variable
+    X = df[FEATURE_NAMES]
+    y = df["success"].astype(int)
 
-# Split by independent basin-hopping run
-splitter = GroupShuffleSplit(
-    n_splits=1,
-    test_size=0.2,
-    random_state=42
-)
+    # Split by independent basin-hopping run
+    splitter = GroupShuffleSplit(
+        n_splits=1,
+        test_size=0.2,
+        random_state=42
+    )
 
-train_idx, test_idx = next(
-    splitter.split(X, y, groups=df["run_id"])
-)
+    train_idx, test_idx = next(
+        splitter.split(X, y, groups=df["run_id"])
+    )
 
-X_train = X.iloc[train_idx]
-X_test = X.iloc[test_idx]
+    X_train = X.iloc[train_idx]
+    X_test = X.iloc[test_idx]
 
-y_train = y.iloc[train_idx]
-y_test = y.iloc[test_idx]
+    y_train = y.iloc[train_idx]
+    y_test = y.iloc[test_idx]
 
-# Train Random Forest
-model = RandomForestClassifier(
-    n_estimators=200,
-    min_samples_leaf=5,
-    random_state=42,
-    n_jobs=-1
-)
+    # Train Random Forest
+    model = RandomForestClassifier(
+        n_estimators=200,
+        min_samples_leaf=5,
+        random_state=42,
+        n_jobs=-1
+    )
 
-model.fit(X_train, y_train)
+    model.fit(X_train, y_train)
 
-# Predict outcomes and probabilities
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
+    # Predict outcomes and probabilities
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1]
 
-# Evaluate
-print("Test success rate:", y_test.mean())
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print("ROC AUC:", roc_auc_score(y_test, y_prob))
-print("Average precision:", average_precision_score(y_test, y_prob))
+    # Evaluate
+    print("Test success rate:", y_test.mean())
+    print("Accuracy:", accuracy_score(y_test, y_pred))
+    print("ROC AUC:", roc_auc_score(y_test, y_prob))
+    print("Average precision:", average_precision_score(y_test, y_prob))
 
-print("\nConfusion matrix:")
-print(confusion_matrix(y_test, y_pred))
+    print("\nConfusion matrix:")
+    print(confusion_matrix(y_test, y_pred))
 
-print("\nClassification report:")
-print(classification_report(y_test, y_pred, zero_division=0))
+    print("\nClassification report:")
+    print(classification_report(y_test, y_pred, zero_division=0))
 
 
+        
     
-   
 

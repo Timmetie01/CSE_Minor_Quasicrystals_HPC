@@ -9,10 +9,10 @@ from src.main_code.potentials_calculations import (
 )
    
 @pytest.mark.parametrize("n_atoms, known_global_min_energy", "max_iter", [
-        (10, -28.422, 100),
-        (25, -80.336, 500),
-        (50, -196.831, 1000),
-        (80, -397.492, 2000),
+        (10, -28.422532, 100),
+        (25, -102.372663, 500),
+        (50, -244.549926, 1000),
+        (80, -428.083564, 2000),
     ])    
     
 def test_ml_basin_hopping_increasing_lj_cluster(n_atoms, known_global_min_energy, max_iter=100):
@@ -23,7 +23,7 @@ def test_ml_basin_hopping_increasing_lj_cluster(n_atoms, known_global_min_energy
     beta = 1.0
     delta = 0.5
 
-    optimized_coords, optimized_energy, iterations, accepted_moves = mlbh.ml_basin_hopping(
+    optimized_coords, optimized_energy, iterations, accepted_moves = mlbh.basin_hopping_opt(
         input_coords=initial_coords,
         potential_function=make_lennard_jones_potential(),
         local_optimizer_wrapper=LBFGS(make_lennard_jones_derivative()),
@@ -41,5 +41,28 @@ def test_ml_basin_hopping_increasing_lj_cluster(n_atoms, known_global_min_energy
                       atol=1e-6,
                       rtol=0)
     
+def test_ml_basin_hopping_invalid_parameters():
+    initial_coords = np.array([[0.0, 0.0, 0.0],
+                               [1.0, 0.0, 0.0],
+                               [0.5, 1.2, 0.0]])
+    potential = make_lennard_jones_potential()
+    optimizer = LBFGS(make_lennard_jones_derivative())
     
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(initial_coords, potential, optimizer, beta=-1.0, max_iter=10)
+        
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(initial_coords, potential, optimizer, beta=1.0, max_iter=0)
     
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(initial_coords, potential, optimizer, beta=1.0, max_iter=10, perturbation_type="unsupported")
+    
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(initial_coords, potential, optimizer, beta=1.0, max_iter=10, perturbation_type="random", delta=-0.5)
+        
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(initial_coords, potential, optimizer, beta=1.0, max_iter=10, perturbation_type="random", delta=None)
+    
+    with pytest.raises(ValueError):
+        mlbh.basin_hopping_opt(np.empty((0, 3)), potential, optimizer, beta=1.0, max_iter=10)
+        
