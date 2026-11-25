@@ -110,3 +110,4 @@
 23-11-2026 12:21:45  | N=  29 | LJ_1.0_1.0         | E =    -121.2976225134 | method = pure_lbfgs           | prev =    -120.7835636811 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:46  | N=  38 | LJ_1.0_1.0         | E =    -170.4747193214 | method = pure_lbfgs           | prev =    -170.2748497154 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:47  | N=  46 | LJ_1.0_1.0         | E =    -214.4651554602 | method = pure_lbfgs           | prev =    -213.9956928030 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
+25-11-2026 12:10:36  | N=   3 | LJ_1.0_1.0         | E =      -3.0000000000 | method = basin_hopping        |                           |     FIRST ATTEMPT      | 

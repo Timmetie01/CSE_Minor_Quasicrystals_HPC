@@ -1,6 +1,6 @@
 
 
-
+25-11-2026 12:10:36  | N=   3 | LJ_1.0_1.0         | E =      -3.0000000000 | method = basin_hopping        |                           |     FIRST ATTEMPT      | 
 
 23-11-2026 12:21:08  | N=   5 | LJ_1.0_1.0         | E =      -9.1038524157 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:13  | N=   6 | LJ_1.0_1.0         | E =     -12.7120622568 | method = pure_lbfgs           | prev =     -12.3029275296 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
