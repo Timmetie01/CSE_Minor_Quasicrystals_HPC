@@ -25,8 +25,8 @@ def LennardJones(epsilon=1, sigma=1):
     return Potential(potential_func, potential_derivative, "LJ", (epsilon, sigma))
 
 def OscillatingPair(frequency, phase_shift):
-    potential_func = potentials_calculations.make_oscillating_pair_potential(frequency, phase_shift)
-    potential_derivative = potentials_calculations.make_oscillating_pair_derivative(frequency, phase_shift)
+    potential_func = potentials_calculations.make_tapered_oscillating_pair_potential(frequency, phase_shift)
+    potential_derivative = potentials_calculations.make_tapered_oscillating_pair_derivative(frequency, phase_shift)
     return Potential(potential_func, potential_derivative, "OP", (frequency, phase_shift))
 
 def RawOscillatingPair(frequency, phase_shift):
