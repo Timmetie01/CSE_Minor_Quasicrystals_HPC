@@ -1,21 +1,30 @@
 import numpy as np
 from src.main_code import potentials_calculations
 from src.main_code.local_optimizers import fire, bfgs
+from src.main_code.global_optimizers import basin_hopping, genetic_algorithm, parallel_tempering, simulated_annealing
+from collections.abc import Callable
 
 class Potential:
-    def __init__(self, potential_func, potential_derivative):
+    def __init__(self, potential_func: Callable, potential_derivative: Callable, potential_str):
         self.potential_func = potential_func
         self.potential_derivative = potential_derivative
+        self.potential_str = potential_str
 
 def LennardJones(epsilon=1, sigma=1):
     potential_func = potentials_calculations.make_lennard_jones_potential(epsilon, sigma)
     potential_derivative = potentials_calculations.make_lennard_jones_derivative(epsilon, sigma)
-    return Potential(potential_func, potential_derivative)
+    return Potential(potential_func, potential_derivative, "LJ")
 
 def OscillatingPair(frequency=1, phase_shift=0):
     potential_func = potentials_calculations.make_oscillating_pair_potential(frequency, phase_shift)
     potential_derivative = potentials_calculations.make_oscillating_pair_derivative(frequency, phase_shift)
-    return Potential(potential_func, potential_derivative)
+    return Potential(potential_func, potential_derivative, "OP")
+
+def RawOscillatingPair(frequency=1, phase_shift=0):
+    potential_func = potentials_calculations.make_oscillating_pair_potential(frequency, phase_shift)
+    potential_derivative = potentials_calculations.make_oscillating_pair_derivative(frequency, phase_shift)
+    return Potential(potential_func, potential_derivative, "raw_OP")
+
 
 class AtomCluster:
     def __init__(self, coords: np.ndarray, Potential: Potential):
@@ -113,8 +122,6 @@ class AtomCluster:
         STILL NEEDS DOCUMENTATION
         
         '''
-
-
         change_own_coords = False
         if coords == None: 
             coords = self.coords
@@ -126,78 +133,163 @@ class AtomCluster:
             self.coords = opt_coords
         return opt_coords
 
-    def basin_hopping(self, coords=None):
+    def LBFGS(self, coords=None, tol=1e-5, max_iter=1000, max_step=0.1):
         '''
-        NOT IMPLEMENTED HERE YET
-
-        raises: NotImplementedError
+        STILL NEEDS DOCUMENTATION AND VERIFICATION
+        
         '''
-        raise NotImplementedError
-
         change_own_coords = False
         if coords == None: 
             coords = self.coords
             change_own_coords = True
 
-        opt_coords = func()
+        opt_coords = bfgs.LBFGS(coords, self.potential_derivative, self.potential_func, tol=tol, max_iter=max_iter, max_step=max_step)
 
         if change_own_coords:
             self.coords = opt_coords
         return opt_coords
 
-    def genetic_algorithm(self, coords=None):
+
+    def basin_hopping(self, coords=None, local_optimizer=bfgs.LBFGS, beta=200, max_iter=1000):
         '''
         NOT IMPLEMENTED HERE YET
 
         raises: NotImplementedError
         '''
-        raise NotImplementedError
 
         change_own_coords = False
         if coords == None: 
             coords = self.coords
             change_own_coords = True
 
-        opt_coords = func()
+        def local_optimizer_wrapper():
+            if local_optimizer == bfgs.BFGS or local_optimizer == bfgs.LBFGS:
+                def opt(coords):
+                    return local_optimizer(coords, self.potential_derivative, self.potential_func)
+            else:
+                def opt(coords):
+                    return local_optimizer(coords, self.potential_derivative)
+            return opt
+
+        opt_coords = basin_hopping.basin_hopping(
+            coords, self.potential_func, 
+            local_optimizer_wrapper(), beta=beta, max_iter=max_iter)
 
         if change_own_coords:
             self.coords = opt_coords
         return opt_coords
 
-    def parallel_tempering(self, coords=None):
+    def genetic_algorithm(self, N_atoms, Pop_size, local_optimizer=bfgs.LBFGS, cutoff_perc=0.5, mutation_prob=0.25, max_frac=0.15):
         '''
         NOT IMPLEMENTED HERE YET
 
         raises: NotImplementedError
+
+        I have to import from testing file:
         '''
-        raise NotImplementedError
 
         change_own_coords = False
         if coords == None: 
             coords = self.coords
             change_own_coords = True
 
-        opt_coords = func()
+        def local_optimizer_wrapper():
+            if local_optimizer == bfgs.BFGS or local_optimizer == bfgs.LBFGS:
+                def opt(coords):
+                    return local_optimizer(coords, self.potential_derivative, self.potential_func)
+            else:
+                def opt(coords):
+                    return local_optimizer(coords, self.potential_derivative)
+            return opt
+
+        rng = np.random.default_rng()
+        
+        selection = genetic_algorithm.make_operators(
+            genetic_algorithm.truncation_selection,
+            potential_func=self.potential_func,
+            cutoff_perc=cutoff_perc,
+            rng=rng,
+        )
+        crossover = genetic_algorithm.make_operators(
+            genetic_algorithm.cut_splice,
+            max_attempts=1000,
+            rng=rng,
+        )
+        mutation = genetic_algorithm.make_operators(
+            genetic_algorithm.random_displacement,
+            rng=rng,
+            prob=mutation_prob,
+            max_frac=max_frac,
+        )
+        local_optimizer = genetic_algorithm.make_population_local_optimizer(
+            local_optimizer,
+            potential_derivative_func=self.potential_derivative,
+        )
+
+        initial_population = genetic_algorithm.rcube_initial_population(Pop_size, N_atoms,  N_atoms ** (1/3))
+
+        
+        opt_coords = genetic_algorithm.GA(initial_population, genetic_algorithm.truncation_selection, crossover, mutation, local_optimizer_wrapper())
 
         if change_own_coords:
             self.coords = opt_coords
         return opt_coords
 
-    def simulated_annealing(self, coords=None):
+    def parallel_tempering(self, N_atoms, M=10, temps="Auto", deltas="Auto", R_c=5, swap_every=10, N_sweeps=2000):
         '''
         NOT IMPLEMENTED HERE YET
 
         raises: NotImplementedError
+        Hardcoded potential...
         '''
-        raise NotImplementedError
+        def cluster_potential_wrapper():
+            def pot(coords):
+                return potentials_calculations.cluster_potential(coords, self.potential_func)
+            return pot
+
+        energies, coords = parallel_tempering.make_start(N_atoms, M, R_c, cluster_potential_wrapper())
+
+        if temps == "Auto":
+            temps = np.geomspace(0.05, 0.40, M)
+        if deltas == "Auto":
+            deltas = parallel_tempering.make_deltas(temps)
 
         change_own_coords = False
         if coords == None: 
             coords = self.coords
             change_own_coords = True
 
-        opt_coords = func()
+        opt_coords = parallel_tempering.parallel_tempering_run(
+            coords, energies, 
+            M=M, temps=temps, deltas=deltas, R_c=R_c, swap_every=swap_every, N_sweeps=N_sweeps, potential_func=self.potential_func
+        )
 
         if change_own_coords:
+            self.coords = opt_coords
+        return opt_coords
+
+    def simulated_annealing(self, N_atoms, local_optimizer=bfgs.LBFGS, set_own_coords=False):
+        '''
+        NOT IMPLEMENTED HERE YET
+
+        Done?
+        
+        '''
+
+        def local_optimizer_wrapper():
+            if local_optimizer == bfgs.BFGS or local_optimizer == bfgs.LBFGS:
+                def opt(coords, pot_derivative):
+                    return local_optimizer(coords, pot_derivative, self.potential_func)
+            else:
+                def opt(coords, pot_derivative):
+                    return local_optimizer(coords, pot_derivative)
+            return opt
+
+        opt_coords = simulated_annealing.simulated_annealing(
+            len(N_atoms), self.potential_func, self.potential_derivative,
+            local_optimizer_wrapper(), None
+            )
+
+        if set_own_coords:
             self.coords = opt_coords
         return opt_coords
