@@ -1,7 +1,8 @@
 import numpy as np
 from src.main_code.potentials_calculations import lennard_jones_potential, cluster_potential, lennard_jones_derivative
-from src.main_code.monte_carlo_sweep  import mc_step, mc_sweep
+from src.main_code.monte_carlo_sweep  import mc_sweep
 from src.main_code.local_optimizers.fire import FIRE
+from src.main_code.visualization import plot_cluster
 #Theory behind the code is partly in chapter 14 of https://drive.google.com/file/d/1pxCWOTs2BM8Df1EvQv6NlNiXXUVjdwx8/view?usp=sharing
 
 def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
@@ -43,7 +44,6 @@ def temps_to_rho(temps: np.ndarray) -> np.ndarray:
     if np.any(diffs <= 0):
         raise ValueError("Initial temperatures must be strictly increasing to compute rho.")
     return np.log(diffs)
-
 
 def update_temp_ladder(
     rho: np.ndarray,
@@ -110,13 +110,15 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     :param temps: array_like, shape (M),
         Temperature ladder ordered from lowest to highest temperature.
     :param deltas: array_like, shape (M),
-        Maximum single-atom displacement for each MC step for each temperature slot.
+        Initial maximum single-atom displacement for each MC step for each temperature slot.
     :param R_c: float,
         Maximum radius of the cluster.
     :param swap_every: int,
         Frequency at which adjacent temperature swaps are attempted.
     :param N_sweeps: int,
         Total number of Monte Carlo sweeps to perform per replica.
+    :param potential_func: callable,
+        Function to calculate the potential between two particles.
     :returns: tuple of (float, np.ndarray)
         - best_energy -- Lowest potential energy found across all replicas during the simulation.
         - best_coords -- Coordinates corresponding to best_energy, shape (N, 3).
@@ -169,15 +171,15 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if deltas_arr.dtype == bool or not np.issubdtype(deltas_arr.dtype, np.number):
         raise TypeError("deltas must contain numeric values")
 
-    deltas_arr = deltas_arr.astype(float, copy=False)
+    deltas_arr = deltas_arr.astype(float, copy=True)
     if deltas_arr.ndim != 1 or deltas_arr.shape[0] != M:
         raise ValueError("deltas must be a 1D array with shape (M)")
 
     if not np.all(np.isfinite(deltas_arr)) or np.any(deltas_arr <= 0):
         raise ValueError("deltas must contain only finite, positive values")
 
-# Convert coordinates to a floating-point array and protect original input
-    coords_lst = np.array(start_coords) # updated in-place by mc_sweep
+    # Convert coordinates to a floating-point array and protect original input
+    coords_lst = np.array(start_coords)  # updated in-place by mc_sweep
     if coords_lst.dtype == bool or not np.issubdtype(coords_lst.dtype, np.number):
         raise TypeError("start_coords must contain numeric values")
 
@@ -203,7 +205,6 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if not np.all(np.isfinite(energies_lst)):
         raise ValueError("start_energies must contain only finite values")
 
-
     T_min = float(temps_arr[0])
     rho = temps_to_rho(temps_arr)
     replica_at = np.arange(M)  # Which replica is at which temperature
@@ -211,12 +212,26 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     betas = 1.0 / (k_b * temps_arr)
     n_moves = coords_lst.shape[1]  # Each Monte Carlo sweep tries N moves
     attempt_count = 0
+    n_atoms = len(coords_lst[0])
+
+    # Log-scale proposal bounds for Robbins-Monro delta adaptation (Miasojedow et al., 2013, Eq. 20)
+    log_deltas = np.log(deltas_arr)
+    log_delta_bounds = (np.log(1e-4), np.log(R_c))
+    slot_accepted = np.zeros(M)
+    moves_per_window = swap_every * n_moves
 
     best_idx = int(np.argmin(energies_lst))
     best_coords = coords_lst[best_idx].copy()
     best_energy = float(energies_lst[best_idx])
 
+    num_accepted_mc_steps = np.zeros(M)
+
     for i in range(N_sweeps):
+        print(
+            f"\rSweep {i}/{N_sweeps} and ratio accepted mc steps for replica zero {num_accepted_mc_steps[0]/((i+1)*n_atoms):.4f}",
+            end=" ",
+            flush=True,
+        )
         for j in range(M):  # Here we would parallelise
             r = replica_at[j]  # Replica number r sits at temp number j
             coords = coords_lst[r]
@@ -224,21 +239,37 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
             beta = betas[j]
             delta = deltas_arr[j]
             energy, low_en, low_en_coords, num_accepted = mc_sweep(
-                coords, energy, beta, n_moves, delta, R_c, potential_func
+                coords, energy, n_atoms, beta, n_moves, delta, R_c, potential_func
             )
             energies_lst[r] = energy
+            num_accepted_mc_steps[r] += num_accepted
+            slot_accepted[j] += num_accepted
             if low_en < best_energy:
                 best_energy = float(low_en)
                 best_coords = low_en_coords.copy()
+
         if (i + 1) % swap_every == 0:
             attempt_temp_swaps(M, replica_at, betas, energies_lst, attempt_count)
             attempt_count += 1
 
-            # diminishing step size gamma for temperatures updates as detailed in sec 2.4 of the paper used in update_temp_ladder
+            # Diminishing step size gamma_n for Robbins-Monro updates (Sec. 2.4 of Miasojedow et al., 2013)
             gamma_n = 0.5 / ((attempt_count + 5) ** 0.6)
-            rho, temps_arr, betas = update_temp_ladder(rho, energies_lst, replica_at, betas, T_min, k_b, gamma_n, alpha_star=0.234,)
-            # keep MC step sizes scaled to the updated temperatures
-            deltas_arr = make_deltas(temps_arr)
+
+            # Update temperature ladder (Eqs. 13-16)
+            rho, temps_arr, betas = update_temp_ladder(
+                rho, energies_lst, replica_at, betas, T_min, k_b, gamma_n, alpha_star=0.234
+            )
+
+            # Update per temperature slot MC displacement deltas (Eq. 20)
+            slot_acc_rate = slot_accepted / moves_per_window
+            log_deltas = np.clip(
+                log_deltas + gamma_n * (slot_acc_rate - 0.234),
+                log_delta_bounds[0],
+                log_delta_bounds[1],
+            )
+            deltas_arr = np.exp(log_deltas)
+            slot_accepted.fill(0.0)
+
     return best_energy, best_coords
 
 def make_deltas(temps, d_ref=0.1, T_ref=0.05):
@@ -304,20 +335,21 @@ import time
 if __name__ == "__main__":
     np.random.seed(42)
 
-    M = 10 #Number of replicas
-    N = 30 #Number of atoms
-    R_c = 10.0 #Max radius of cluster to prevent atoms from escaping
+    M = 25 #Number of replicas
+    N = 50 #Number of atoms
+    R_c = 3.8 #Max radius of cluster to prevent atoms from escaping
     swap_every = 10 #Every swap_every sweeps it will attempt the temperature ladder swaps
-    N_sweeps = 2000 #Number of MC sweeps, each of which consiting of N MC steps
-    temps = np.geomspace(0.05, 0.40, M) #Initial temperature ladder, T_min and T_max are the most important choices. 
+    N_sweeps = 20000 #Number of MC sweeps, each of which consiting of N MC steps
+    temps = np.geomspace(0.04, 0.50, M) #Initial temperature ladder, T_min and T_max are the most important choices. 
     #T_min will stay fixed over the temperature adjustments, T_max may change.
-    deltas = make_deltas(temps)
+    deltas = make_deltas(temps, 0.08, 0.04)
     energies, coords = make_start(N, M, R_c, cluster_potential)
 
     t_start = time.perf_counter()
     best_e, best_c = parallel_tempering_run(coords, energies, M, temps, deltas, R_c, swap_every, N_sweeps, lennard_jones_potential)
     t_end = time.perf_counter()
 
+    print()
     print(f"PT runtime: {t_end - t_start:.4f} s")
 
     #Then we need to quench as this found value will be for T>0 and the minima in the table are at T=0:
@@ -327,3 +359,5 @@ if __name__ == "__main__":
             dt=0.002, max_step=0.05)
     best_e_q = cluster_potential(best_c_q)
     print("Quenched global energy minimum:", best_e_q, "for: ", N, " atoms.")
+    plot_cluster(best_c_q)
+ 

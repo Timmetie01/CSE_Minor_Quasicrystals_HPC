@@ -1,5 +1,6 @@
-from src.main_code.potentials_calculations import cluster_potential_gradient, cluster_potential, lennard_jones_derivative, lennard_jones_potential
+from src.main_code.potentials_calculations import cluster_potential_gradient, cluster_potential, lennard_jones_derivative, lennard_jones_potential, lennard_jones_potential_njit, lennard_jones_derivative_njit, cluster_potential_njit, cluster_potential_gradient_njit
 import numpy as np
+from numba import njit
 import warnings
 from collections import deque
 from collections.abc import Callable
@@ -356,3 +357,200 @@ def LBFGS(
     if not keep_steps:
         return final_coords
     return final_coords, np.asarray(step_list, dtype=np.float64)
+
+
+@njit
+def lbfgs_njit(
+    x_init: np.ndarray,
+    potential_derivative_njit=lennard_jones_derivative_njit,
+    potential_func_njit=lennard_jones_potential_njit,
+    tol: float = 1e-5,
+    max_iter: int = 1000,
+    max_step: float = 0.1,
+    m: int = 10,
+):
+    """
+    Pure-@njit L-BFGS optimizer using circular history buffers, two-loop recursion,
+    quadratic-interpolated Armijo backtracking, and per-atom step capping.
+    Returns (final_coords, final_energy, n_iter, converged).
+    """
+    n_atoms = x_init.shape[0]
+    dim = n_atoms * 3
+
+    coords = x_init.copy()
+    x = coords.ravel()
+
+    H0 = 0.02
+    c1 = 1e-4
+
+    # Circular ring buffers replacing collections.deque
+    s_hist = np.empty((m, dim), dtype=np.float64)
+    y_hist = np.empty((m, dim), dtype=np.float64)
+    rho_hist = np.empty(m, dtype=np.float64)
+    alpha_buf = np.empty(m, dtype=np.float64)
+    hist_len = 0
+    hist_head = 0  # Next write index in [0, m)
+
+    q = np.empty(dim, dtype=np.float64)
+    r_vec = np.empty(dim, dtype=np.float64)
+    p = np.empty(dim, dtype=np.float64)
+    s = np.empty(dim, dtype=np.float64)
+    x_trial = np.empty(dim, dtype=np.float64)
+    y = np.empty(dim, dtype=np.float64)
+
+    E = cluster_potential_njit(coords, potential_func_njit)
+    gradx = cluster_potential_gradient_njit(coords, potential_derivative_njit).ravel()
+
+    n_iter = 0
+    converged = False
+
+    for _ in range(max_iter):
+        # 3.1: Convergence check (max absolute gradient component)
+        max_g = 0.0
+        for d in range(dim):
+            ag = abs(gradx[d])
+            if ag > max_g:
+                max_g = ag
+        if max_g < tol:
+            converged = True
+            break
+
+        # 3.2: Two-loop recursion
+        for d in range(dim):
+            q[d] = gradx[d]
+
+        # 3.2.1: Backward loop from newest to oldest entry
+        for k_back in range(hist_len - 1, -1, -1):
+            slot = (hist_head - hist_len + k_back) % m
+            sq = 0.0
+            for d in range(dim):
+                sq += s_hist[slot, d] * q[d]
+            a = rho_hist[slot] * sq
+            alpha_buf[k_back] = a
+            for d in range(dim):
+                q[d] -= a * y_hist[slot, d]
+
+        if hist_len > 0:
+            last_slot = (hist_head - 1) % m
+            sy_last = 0.0
+            yy_last = 0.0
+            for d in range(dim):
+                sl = s_hist[last_slot, d]
+                yl = y_hist[last_slot, d]
+                sy_last += sl * yl
+                yy_last += yl * yl
+            gamma = sy_last / yy_last
+            for d in range(dim):
+                r_vec[d] = gamma * q[d]
+        else:
+            for d in range(dim):
+                r_vec[d] = H0 * q[d]
+
+        # 3.2.2: Forward loop from oldest to newest entry
+        for k_fwd in range(hist_len):
+            slot = (hist_head - hist_len + k_fwd) % m
+            yr = 0.0
+            for d in range(dim):
+                yr += y_hist[slot, d] * r_vec[d]
+            beta = rho_hist[slot] * yr
+            coeff = alpha_buf[k_fwd] - beta
+            for d in range(dim):
+                r_vec[d] += coeff * s_hist[slot, d]
+
+        gp = 0.0
+        for d in range(dim):
+            p[d] = -r_vec[d]
+            gp += gradx[d] * p[d]
+
+        # Reset search direction if non-descent
+        if gp >= 0.0:
+            hist_len = 0
+            hist_head = 0
+            gp = 0.0
+            for d in range(dim):
+                p[d] = -H0 * gradx[d]
+                gp += gradx[d] * p[d]
+
+        # Per-atom step capping
+        max_disp = 0.0
+        for a in range(n_atoms):
+            base = 3 * a
+            disp = np.sqrt(
+                p[base] * p[base]
+                + p[base + 1] * p[base + 1]
+                + p[base + 2] * p[base + 2]
+            )
+            if disp > max_disp:
+                max_disp = disp
+
+        was_clamped = max_disp > max_step
+        if was_clamped:
+            scale = max_step / max_disp
+            for d in range(dim):
+                p[d] *= scale
+            gp *= scale
+
+        # 3.4: Armijo backtracking line search with quadratic interpolation
+        alpha = 1.0
+        E_new = E
+        for _ in range(20):
+            for d in range(dim):
+                sd = alpha * p[d]
+                s[d] = sd
+                x_trial[d] = x[d] + sd
+
+            E_new = cluster_potential_njit(x_trial.reshape((n_atoms, 3)), potential_func_njit)
+            if E_new <= E + c1 * alpha * gp:
+                break
+
+            denom = 2.0 * (E_new - E - gp * alpha)
+            if denom > 1e-14 and not was_clamped:
+                alpha_interp = -(gp * alpha * alpha) / denom
+                low = 0.1 * alpha
+                high = 0.5 * alpha
+                if alpha_interp < low:
+                    alpha = low
+                elif alpha_interp > high:
+                    alpha = high
+                else:
+                    alpha = alpha_interp
+            else:
+                alpha *= 0.5
+
+        # 3.5: Update coordinates, gradient, and circular curvature buffer
+        for d in range(dim):
+            x[d] += s[d]
+        E = E_new
+        gradx_new = cluster_potential_gradient_njit(coords, potential_derivative_njit).ravel()
+
+        ys = 0.0
+        for d in range(dim):
+            yd = gradx_new[d] - gradx[d]
+            y[d] = yd
+            ys += yd * s[d]
+
+        if ys > 1e-14:
+            inv_ys = 1.0 / ys
+            for d in range(dim):
+                s_hist[hist_head, d] = s[d]
+                y_hist[hist_head, d] = y[d]
+            rho_hist[hist_head] = inv_ys
+            hist_head = (hist_head + 1) % m
+            if hist_len < m:
+                hist_len += 1
+
+        for d in range(dim):
+            gradx[d] = gradx_new[d]
+        n_iter += 1
+
+    # Final convergence check if max_iter reached on last step
+    if not converged:
+        max_g = 0.0
+        for d in range(dim):
+            ag = abs(gradx[d])
+            if ag > max_g:
+                max_g = ag
+        if max_g < tol:
+            converged = True
+
+    return coords, E, n_iter, converged
