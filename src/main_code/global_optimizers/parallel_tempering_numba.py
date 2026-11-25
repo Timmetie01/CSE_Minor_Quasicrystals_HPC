@@ -572,7 +572,7 @@ if __name__ == "__main__":
     )
     t_end = time.perf_counter()
 
-    print(f"PT runtime: {t_end - t_start:.4f} s")
+    print(f"\nPT runtime: {t_end - t_start:.4f} s")
     print("Quenched global energy minimum:", best_e, "for:", N, "atoms.")
     print("Wales databas energy minimum:", cluster_potential(read_LJwales_data(N), lennard_jones_potential))
     highscores(best_c, "parallel_tempering", "LJ", (1, 1), "First attempt of PT using numba")
