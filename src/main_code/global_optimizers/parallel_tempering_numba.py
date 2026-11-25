@@ -18,32 +18,36 @@ from data.data_handling import highscores, read_LJwales_data
 
 
 @njit
-def _check_interrupt(): #Lets you exit njit run with ctrl c
+def _check_interrupt():  # Lets you exit njit run with ctrl c
     with objmode():
         pass  # Entering objmode acquires the GIL and triggers any pending KeyboardInterrupt
 
+
 @njit
-def attempt_temp_swaps_njit(M, replica_at, betas, energies, attempt_count):
+def attempt_temp_swaps_njit(
+    M,
+    replica_at,
+    betas,
+    energies,
+    attempt_count,
+    track_diagnostics,
+    swap_attempts,
+    swap_accepts,
+):
     """
     Attempts to swap configurations between adjacent temperatures using the parallel tempering Metropolis criterion.
-    Modifies replica_at in place.
+    Modifies replica_at in place and optionally records per-interval swap statistics.
     """
     start = attempt_count % 2
     for t in range(start, M - 1, 2):
         r_i, r_j = replica_at[t], replica_at[t + 1]
+        if track_diagnostics:
+            swap_attempts[t] += 1
         delta = (betas[t] - betas[t + 1]) * (energies[r_i] - energies[r_j])
         if delta >= 0.0 or np.random.rand() < np.exp(delta):
             replica_at[t], replica_at[t + 1] = r_j, r_i
-
-def temps_to_rho(temps: np.ndarray) -> np.ndarray:
-    """
-    Converts strictly increasing temperatures on [T_min, T_max] to log-spacings rho.
-    """
-    diffs = np.diff(temps)
-    if np.any(diffs <= 0):
-        raise ValueError("Initial temperatures must be strictly increasing to compute rho.")
-    span = temps[-1] - temps[0]
-    return np.log(diffs / span)
+            if track_diagnostics:
+                swap_accepts[t] += 1
 
 
 @njit
@@ -51,6 +55,7 @@ def update_temp_ladder_njit(
     rho: np.ndarray,
     energies: np.ndarray,
     replica_at: np.ndarray,
+    temps: np.ndarray,
     betas: np.ndarray,
     T_min: float,
     T_max: float,
@@ -60,6 +65,7 @@ def update_temp_ladder_njit(
     """
     Updates interior temperatures on a fixed [T_min, T_max] interval via
     Robbins-Monro equal-acceptance-rate adaptation (Atchadé et al. / Vousden et al.).
+    Updates temps and betas in place.
     """
     M = betas.shape[0]
     n_intervals = M - 1
@@ -78,7 +84,7 @@ def update_temp_ladder_njit(
 
     # Update rho toward equalizing adjacent acceptance rates around mean_accept
     rho_next = np.empty(n_intervals, dtype=np.float64)
-    max_rho = -1e300
+    max_rho = rho_bounds[0]
     for t in range(n_intervals):
         val = rho[t] + step_size * (accept_probs[t] - mean_accept)
         if val < rho_bounds[0]:
@@ -100,26 +106,204 @@ def update_temp_ladder_njit(
         weights[t] = w
         sum_w += w
 
-    # Reconstruct temperatures on [T_min, T_max]
-    temps_next = np.empty(M, dtype=np.float64)
-    betas_next = np.empty(M, dtype=np.float64)
-
-    temps_next[0] = T_min
-    betas_next[0] = 1.0 / (T_min)
+    temps[0] = T_min
+    betas[0] = 1.0 / T_min
 
     span = T_max - T_min
     cum_w = 0.0
     for t in range(n_intervals - 1):
         cum_w += weights[t] / sum_w
         t_val = T_min + span * cum_w
-        temps_next[t + 1] = t_val
-        betas_next[t + 1] = 1.0 / (t_val)
+        temps[t + 1] = t_val
+        betas[t + 1] = 1.0 / t_val
 
-    # Pin the top endpoint identically to T_max (avoids floating-point drift)
-    temps_next[M - 1] = T_max
-    betas_next[M - 1] = 1.0 / (T_max)
+    temps[M - 1] = T_max
+    betas[M - 1] = 1.0 / T_max
 
-    return rho_next, temps_next, betas_next
+    return rho_next
+
+
+@njit
+def update_temp_ladder_feedback_njit(
+    n_up: np.ndarray,
+    n_down: np.ndarray,
+    temps: np.ndarray,
+    betas: np.ndarray,
+    T_min: float,
+    T_max: float,
+    damping: float = 0.5,
+):
+    """
+    Updates interior temperatures on a fixed [T_min, T_max] interval via
+    Katzgraber-Trebst-Huse-Troyer (2006) feedback optimization to maximize
+    round-trip replica flux across phase transitions.
+    Updates temps and betas in place. Returns True if update succeeded, False if data was insufficient.
+    (https://doi.org/10.48550/arXiv.cond-mat/0602085)
+    """
+    M = temps.shape[0]
+    n_intervals = M - 1
+
+    # Calculate f as in equation 3 of the paper
+    f = np.empty(M, dtype=np.float64)
+    f[0] = 1.0
+    f[M - 1] = 0.0
+    total_labeled = 0.0
+    for j in range(1, M - 1):
+        tot = n_up[j] + n_down[j]
+        total_labeled += tot
+        f[j] = n_up[j] / tot
+
+    if total_labeled < float(M):
+        return False
+
+    # Added enforcing monotonic non-increasing f[0] >= f[1] >= ... >= f[M-1], since the noise in the approxmation might break this. This is not needed in the papers theoretical approach.
+    blocks_val = np.empty(M, dtype=np.float64)
+    blocks_len = np.empty(M, dtype=np.int64)
+    n_blocks = 0
+    for j in range(M):
+        blocks_val[n_blocks] = f[j]
+        blocks_len[n_blocks] = 1
+        n_blocks += 1
+        while n_blocks > 1 and blocks_val[n_blocks - 2] < blocks_val[n_blocks - 1]:
+            w1 = float(blocks_len[n_blocks - 2])
+            w2 = float(blocks_len[n_blocks - 1])
+            blocks_val[n_blocks - 2] = (w1 * blocks_val[n_blocks - 2] + w2 * blocks_val[n_blocks - 1]) / (w1 + w2)
+            blocks_len[n_blocks - 2] += blocks_len[n_blocks - 1]
+            n_blocks -= 1
+
+    idx = 0
+    for b in range(n_blocks):
+        for _ in range(blocks_len[b]):
+            f[idx] = blocks_val[b]
+            idx += 1
+    f[0] = 1.0
+    f[M - 1] = 0.0
+
+    # Eta as in equation 8 and 10. We use the log of the temperatures in stead of temps directly as the spacing is a bit different
+    log_temps = np.log(temps)
+    eta = np.empty(n_intervals, dtype=np.float64)
+    cum_eta = np.empty(M, dtype=np.float64)
+    cum_eta[0] = 0.0
+    eps_floor = 0.05 / float(n_intervals)
+    for t in range(n_intervals):
+        d_log_t = log_temps[t + 1] - log_temps[t]
+        df = f[t] - f[t + 1]
+        if df < eps_floor:
+            df = eps_floor
+        eta[t] = np.sqrt(df) / d_log_t
+        cum_eta[t + 1] = cum_eta[t] + eta[t] * d_log_t
+
+    total_integral = cum_eta[M - 1]
+    if total_integral <= 0.0:
+        return False
+
+    # Invert cumulative integral to place interior temperatures at equal flux-weight quantiles
+    new_temps = np.empty(M, dtype=np.float64)
+    new_temps[0] = T_min
+    new_temps[M - 1] = T_max
+
+    seg = 0
+    for j in range(1, M - 1):
+        target_c = total_integral * (float(j) / float(n_intervals))
+        while seg < n_intervals - 1 and cum_eta[seg + 1] < target_c:
+            seg += 1
+        denom = cum_eta[seg + 1] - cum_eta[seg]
+        frac = (target_c - cum_eta[seg]) / denom if denom > 0.0 else 0.0
+        target_log_t = log_temps[seg] + frac * (log_temps[seg + 1] - log_temps[seg])
+        # Damp update in log-T space for stability across epochs
+        blended_log_t = (1.0 - damping) * log_temps[j] + damping * target_log_t
+        new_temps[j] = np.exp(blended_log_t)
+
+    # Guarantee strict monotonicity and update temps / betas in place
+    temps[0] = T_min
+    betas[0] = 1.0 / T_min
+    for j in range(1, M - 1):
+        if new_temps[j] <= temps[j - 1]:
+            new_temps[j] = temps[j - 1] * 1.0001
+        temps[j] = new_temps[j]
+        betas[j] = 1.0 / new_temps[j]
+    temps[M - 1] = T_max
+    betas[M - 1] = 1.0 / T_max
+
+    return True
+
+
+@njit
+def update_temp_ladder_feedback_exact_njit(
+    n_up: np.ndarray,
+    n_down: np.ndarray,
+    temps: np.ndarray,
+    betas: np.ndarray,
+    T_min: float,
+    T_max: float,
+):
+    """
+    Exact linear-T implementation of Katzgraber, Trebst, Huse, & Troyer (2006),
+    J. Stat. Mech. P03018:
+      1. f(T_i) = n_up(T_i) / (n_up(T_i) + n_down(T_i)),  f(T_0) = 1, f(T_{M-1}) = 0
+      2. eta'(T) = C' * sqrt( (1 / dT) * |df / dT| )
+      3. Integral_{T_min}^{T'_k} eta'(T) dT = k / (M - 1)
+    Updates temps and betas in place. Returns True if update succeeded.
+    """
+    M = temps.shape[0]
+    n_intervals = M - 1
+
+    # 1. Up-moving replica fraction f(T_j) with boundary conditions f(T_min)=1, f(T_max)=0
+    f = np.empty(M, dtype=np.float64)
+    f[0] = 1.0
+    f[M - 1] = 0.0
+    total_labeled = 0.0
+    for j in range(1, M - 1):
+        tot = n_up[j] + n_down[j]
+        total_labeled += tot
+        f[j] = n_up[j] / tot
+
+    if total_labeled < float(M):
+        return False
+
+    # 2. Estimate eta'(T) = C' * sqrt( (1 / dT) * |df / dT| ) in linear T
+    #    With df_dT = |f[t+1] - f[t]| / dT, eta_unnorm[t] = sqrt(df_dT / dT) = sqrt(|df|) / dT
+    cum_eta = np.empty(M, dtype=np.float64)
+    cum_eta[0] = 0.0
+    for t in range(n_intervals):
+        d_t = temps[t + 1] - temps[t]
+        abs_df = abs(f[t + 1] - f[t])
+        if abs_df < 1e-12:
+            abs_df = 1e-12
+        df_dT = abs_df / d_t
+        eta_t = np.sqrt(df_dT / d_t)
+        cum_eta[t + 1] = cum_eta[t] + eta_t * d_t
+
+    total_integral = cum_eta[M - 1]
+    if total_integral <= 0.0:
+        return False
+
+    # 3. Solve Integral_{T_min}^{T'_j} eta'(T) dT = j / (M - 1) directly (no damping)
+    new_temps = np.empty(M, dtype=np.float64)
+    new_temps[0] = T_min
+    new_temps[M - 1] = T_max
+
+    seg = 0
+    for j in range(1, M - 1):
+        target_c = total_integral * (float(j) / float(n_intervals))
+        while seg < n_intervals - 1 and cum_eta[seg + 1] < target_c:
+            seg += 1
+        denom = cum_eta[seg + 1] - cum_eta[seg]
+        frac = (target_c - cum_eta[seg]) / denom if denom > 0.0 else 0.0
+        new_temps[j] = temps[seg] + frac * (temps[seg + 1] - temps[seg])
+
+    # Write updated temperatures and inverse temperatures in place
+    temps[0] = T_min
+    betas[0] = 1.0 / T_min
+    for j in range(1, M - 1):
+        if new_temps[j] <= temps[j - 1]:
+            new_temps[j] = temps[j - 1] + 1e-12
+        temps[j] = new_temps[j]
+        betas[j] = 1.0 / new_temps[j]
+    temps[M - 1] = T_max
+    betas[M - 1] = 1.0 / T_max
+
+    return True
 
 
 @njit
@@ -144,7 +328,18 @@ def _pt_loop_njit(
     quench_lowest_n,
     N_sweeps,
     print_progress,
+    print_diagnostics,
+    diag_swap_attempts,
+    diag_swap_accepts,
+    diag_half_trips,
+    diag_mc_accepted,
+    diag_mc_moves,
+    diag_max_r_stats,
+    diag_best_info,
     adapt_fraction,
+    use_feedback_update,
+    feedback_damping,
+    use_feedback_update_exact,
     potential_func_njit,
     potential_derivative_njit,
     local_optimisor_njit,
@@ -156,7 +351,7 @@ def _pt_loop_njit(
     T_max = temps_arr[-1]
     rho = np.log(np.diff(temps_arr) / (T_max - T_min))
     replica_at = np.arange(M)
-    betas = 1.0 /temps_arr
+    betas = 1.0 / temps_arr
 
     n_atoms = coords_lst.shape[1]
     n_moves = n_atoms
@@ -168,6 +363,18 @@ def _pt_loop_njit(
     slot_accepted = np.zeros(M, dtype=np.float64)
     moves_per_window = float(swap_every * n_moves)
     adapt_cutoff = int(adapt_fraction * N_sweeps)
+    diag_start = 0
+
+    # Track extreme visits whenever diagnostics OR feedback temperature adaptation is enabled
+    any_feedback = use_feedback_update or use_feedback_update_exact
+    track_extremes = print_diagnostics or any_feedback
+    extreme_state = np.zeros(M, dtype=np.int64)  # -1 = last visited T_min, +1 = last visited T_max
+    fb_n_up = np.zeros(M, dtype=np.float64)
+    fb_n_down = np.zeros(M, dtype=np.float64)
+
+    # Exponentially growing epoch schedule for feedback optimization (e.g. 10%, 25%, 50%, 80%, 100% of adapt_cutoff)
+    fb_epoch_len = max(swap_every * 50, adapt_cutoff // 10)
+    fb_next_update = fb_epoch_len
 
     best_idx = 0
     best_energy = energies_lst[0]
@@ -178,7 +385,25 @@ def _pt_loop_njit(
     best_coords = coords_lst[best_idx].copy()
     best_coords_out[:] = best_coords
 
+    if track_extremes:
+        for m in range(M):
+            extreme_state[replica_at[m]] = -1 if m < (M // 2) else 1
+
+    if print_diagnostics:
+        diag_best_info[0] = 0.0
+        diag_best_info[1] = float(best_idx)
+        diag_best_info[2] = temps_arr[best_idx]
+        diag_best_info[3] = 0.0  # 0 = initial, 1 = MC sweep, 2 = periodic quench, 3 = final quench
+
     for i in range(N_sweeps):
+        record_diagnostics = print_diagnostics and (i >= diag_start)
+        if i == diag_start and print_diagnostics:
+            diag_half_trips[:] = 0
+            if not any_feedback:
+                extreme_state[:] = 0
+                extreme_state[replica_at[0]] = -1
+                extreme_state[replica_at[M - 1]] = 1
+
         for j in range(M):
             r = replica_at[j]
             energy, low_en, low_en_coords, num_accepted = mc_sweep_njit(
@@ -193,10 +418,19 @@ def _pt_loop_njit(
             )
             energies_lst[r] = energy
             slot_accepted[j] += num_accepted
+            if record_diagnostics:
+                diag_mc_accepted[j] += num_accepted
+                diag_mc_moves[j] += n_moves
             if low_en < best_energy:
+                is_meaningful_improvement = (best_energy - low_en) > 1e-8
                 best_energy = low_en
                 best_coords = low_en_coords.copy()
                 best_coords_out[:] = best_coords
+                if print_diagnostics and is_meaningful_improvement:
+                    diag_best_info[0] = float(i + 1)
+                    diag_best_info[1] = float(j)
+                    diag_best_info[2] = temps_arr[j]
+                    diag_best_info[3] = 1.0
 
         if (i + 1) % swap_every == 0:
             for m in range(M):
@@ -207,7 +441,7 @@ def _pt_loop_njit(
                     cx += coords_lst[m, a, 0]
                     cy += coords_lst[m, a, 1]
                     cz += coords_lst[m, a, 2]
-                cx /= n_atoms #Average x pos of the atoms, used to recenter the cluster to (0,0,0)
+                cx /= n_atoms  # Average x pos of the atoms, used to recenter the cluster to (0,0,0)
                 cy /= n_atoms
                 cz /= n_atoms
                 for a in range(n_atoms):
@@ -215,14 +449,91 @@ def _pt_loop_njit(
                     coords_lst[m, a, 1] -= cy
                     coords_lst[m, a, 2] -= cz
 
-            attempt_temp_swaps_njit(M, replica_at, betas, energies_lst, attempt_count)
+            if record_diagnostics:
+                # 1. Track outermost atom radius at T_max (evaporation / R_c check)
+                r_hot = replica_at[M - 1]
+                max_rad = 0.0
+                for a in range(n_atoms):
+                    dx = coords_lst[r_hot, a, 0]
+                    dy = coords_lst[r_hot, a, 1]
+                    dz = coords_lst[r_hot, a, 2]
+                    rad = np.sqrt(dx * dx + dy * dy + dz * dz)
+                    if rad > max_rad:
+                        max_rad = rad
+                diag_max_r_stats[0] += max_rad
+                diag_max_r_stats[1] += 1.0
+                if max_rad > diag_max_r_stats[2]:
+                    diag_max_r_stats[2] = max_rad
+
+            attempt_temp_swaps_njit(
+                M,
+                replica_at,
+                betas,
+                energies_lst,
+                attempt_count,
+                record_diagnostics,
+                diag_swap_attempts,
+                diag_swap_accepts,
+            )
             attempt_count += 1
+
+            if track_extremes:
+                r_low = replica_at[0]
+                if extreme_state[r_low] == 1:
+                    if record_diagnostics:
+                        diag_half_trips[r_low] += 1
+                    extreme_state[r_low] = -1
+                elif extreme_state[r_low] == 0:
+                    extreme_state[r_low] = -1
+
+                r_high = replica_at[M - 1]
+                if extreme_state[r_high] == -1:
+                    if record_diagnostics:
+                        diag_half_trips[r_high] += 1
+                    extreme_state[r_high] = 1
+                elif extreme_state[r_high] == 0:
+                    extreme_state[r_high] = 1
 
             if i < adapt_cutoff:
                 gamma_n = gamma_scale / ((attempt_count + gamma_offset) ** gamma_decay)
-                rho, temps_arr, betas = update_temp_ladder_njit(
-                rho, energies_lst, replica_at, betas, T_min, T_max, gamma_n, rho_bounds
-                )
+                if use_feedback_update_exact:
+                    for j in range(M):
+                        st = extreme_state[replica_at[j]]
+                        if st == -1:
+                            fb_n_up[j] += 1.0
+                        elif st == 1:
+                            fb_n_down[j] += 1.0
+
+                    if (i + 1) >= fb_next_update:
+                        updated = update_temp_ladder_feedback_exact_njit(
+                            fb_n_up, fb_n_down, temps_arr, betas, T_min, T_max
+                        )
+                        if updated:
+                            fb_n_up[:] = 0.0
+                            fb_n_down[:] = 0.0
+                            fb_epoch_len *= 2
+                        fb_next_update = (i + 1) + fb_epoch_len
+                elif use_feedback_update:
+                    for j in range(M):
+                        st = extreme_state[replica_at[j]]
+                        if st == -1:
+                            fb_n_up[j] += 1.0
+                        elif st == 1:
+                            fb_n_down[j] += 1.0
+
+                    if (i + 1) >= fb_next_update:
+                        updated = update_temp_ladder_feedback_njit(
+                            fb_n_up, fb_n_down, temps_arr, betas, T_min, T_max, feedback_damping
+                        )
+                        if updated:
+                            fb_n_up[:] = 0.0
+                            fb_n_down[:] = 0.0
+                            fb_epoch_len = int(fb_epoch_len * 1.5)
+                        fb_next_update = (i + 1) + fb_epoch_len
+                else:
+                    rho = update_temp_ladder_njit(
+                        rho, energies_lst, replica_at, temps_arr, betas, T_min, T_max, gamma_n, rho_bounds
+                    )
 
                 for j in range(M):
                     acc_rate = slot_accepted[j] / moves_per_window
@@ -236,28 +547,131 @@ def _pt_loop_njit(
 
             for j in range(M):
                 slot_accepted[j] = 0.0
-        
+
         if quench_every is not None and (i + 1) % quench_every == 0:
             for j in range(min(quench_lowest_n, M)):
                 r = replica_at[j]
-                q_coords, q_energy, _, _ = local_optimisor_njit(coords_lst[r].copy(), potential_derivative_njit,
-                    potential_func_njit)
+                q_coords, q_energy, _, _ = local_optimisor_njit(
+                    coords_lst[r].copy(), potential_derivative_njit, potential_func_njit
+                )
                 if q_energy < best_energy:
+                    is_meaningful_improvement = (best_energy - q_energy) > 1e-8
                     best_energy = q_energy
                     best_coords = q_coords
                     best_coords_out[:] = best_coords
+                    if print_diagnostics and is_meaningful_improvement:
+                        diag_best_info[0] = float(i + 1)
+                        diag_best_info[1] = float(j)
+                        diag_best_info[2] = temps_arr[j]
+                        diag_best_info[3] = 2.0
+
         if (i + 1) % 100 == 0:
             _check_interrupt()
             if print_progress:
                 pct = int(round(100.0 * (i + 1) / N_sweeps))
-                print("Progress:", pct, "% | Sweep:", i + 1, "/", N_sweeps, "| Best energy:", best_energy, "| Wales LJ energy:", wales_energy)
-    print("Temperatures at end", temps_arr)
-    #Quench:
-    final_coords, final_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
+                print(
+                    "Progress:",
+                    pct,
+                    "% | Sweep:",
+                    i + 1,
+                    "/",
+                    N_sweeps,
+                    "| Best energy:",
+                    best_energy,
+                    "| Wales LJ energy:",
+                    wales_energy,
+                )
+    # Final Quench:
+    final_coords, final_energy, _, _ = local_optimisor_njit(
+        best_coords, potential_derivative_njit, potential_func_njit
+    )
     if final_energy < best_energy:
+        is_meaningful_improvement = (best_energy - final_energy) > 1e-8
         best_energy = final_energy
         best_coords = final_coords
+        best_coords_out[:] = best_coords
+        if print_diagnostics and is_meaningful_improvement:
+            diag_best_info[0] = float(N_sweeps)
+            diag_best_info[3] = 3.0
     return best_energy, best_coords
+
+
+def _print_pt_diagnostics(
+    temps_arr,
+    deltas_arr,
+    d_min,
+    d_max,
+    R_c,
+    target_accept_rate,
+    diag_swap_attempts,
+    diag_swap_accepts,
+    diag_half_trips,
+    diag_mc_accepted,
+    diag_mc_moves,
+    diag_max_r_stats,
+    diag_best_info,
+):
+    M = len(temps_arr)
+    print("\n================ Parallel Tempering Diagnostics ================")
+    print("Final temperatures:", np.round(temps_arr, 5))
+
+    # 1. Adjacent swap acceptance rates (tests M & ladder adaptation)
+    if M > 1 and np.any(diag_swap_attempts > 0):
+        valid = diag_swap_attempts > 0
+        swap_rates = np.zeros(M - 1, dtype=float)
+        swap_rates[valid] = diag_swap_accepts[valid] / diag_swap_attempts[valid]
+        min_idx = int(np.argmin(swap_rates))
+        max_idx = int(np.argmax(swap_rates))
+        print(
+            f"Adjacent swap acceptance: min={swap_rates[min_idx]:.3f} (at T={temps_arr[min_idx]:.4f}->{temps_arr[min_idx+1]:.4f}), "
+            f"mean={np.mean(swap_rates):.3f}, max={swap_rates[max_idx]:.3f} (target ~0.20-0.40)"
+        )
+        print("Swap rates per interval: ", np.round(swap_rates, 3))
+
+    # 2. Round trips (tests ergodic mixing across T_min <-> T_max)
+    round_trips = diag_half_trips // 2
+    print(
+        f"Replica round trips (T_max <-> T_min): total={int(np.sum(round_trips))}, "
+        f"min/replica={int(np.min(round_trips))}, max/replica={int(np.max(round_trips))}"
+    )
+
+    # 3. MC step acceptance & step-size bounds (tests deltas, d_min, d_max, Robbins-Monro)
+    valid_mc = diag_mc_moves > 0
+    mc_rates = np.zeros(M, dtype=float)
+    mc_rates[valid_mc] = diag_mc_accepted[valid_mc] / diag_mc_moves[valid_mc]
+    n_pinned_min = int(np.sum(np.isclose(deltas_arr, d_min, rtol=1e-3)))
+    n_pinned_max = int(np.sum(np.isclose(deltas_arr, d_max, rtol=1e-3)))
+    print(
+        f"MC acceptance rates: min={np.min(mc_rates):.3f}, mean={np.mean(mc_rates):.3f}, "
+        f"max={np.max(mc_rates):.3f} (target={target_accept_rate:.3f})"
+    )
+    print(
+        f"Final step sizes delta: min={np.min(deltas_arr):.5f}, max={np.max(deltas_arr):.5f} "
+        f"| pinned at d_min: {n_pinned_min}, pinned at d_max: {n_pinned_max}"
+    )
+
+    # 4. Confinement & Melting checks (tests T_min, T_max, R_c)
+    if diag_max_r_stats[1] > 0:
+        mean_max_r = diag_max_r_stats[0] / diag_max_r_stats[1]
+        peak_max_r = diag_max_r_stats[2]
+        print(
+            f"Outermost atom radius at T_max: mean={mean_max_r:.3f}, peak={peak_max_r:.3f} vs R_c={R_c:.3f} "
+            f"({100.0 * mean_max_r / R_c:.1f}% of R_c)"
+        )
+
+    # 5. Best energy discovery attribution (tests N_sweeps & quench_lowest_n)
+    source_map = {
+        0: "initial configuration",
+        1: "MC sweep",
+        2: "periodic quench",
+        3: "final quench",
+    }
+    src_label = source_map.get(int(diag_best_info[3]), "unknown")
+    print(
+        f"Best energy found at sweep {int(diag_best_info[0])} | slot {int(diag_best_info[1])} "
+        f"(T={diag_best_info[2]:.5f}) | via {src_label}"
+    )
+    print("================================================================\n")
 
 
 def parallel_tempering_run(
@@ -279,68 +693,29 @@ def parallel_tempering_run(
     quench_lowest_n,
     N_sweeps,
     print_progress,
+    print_diagnostics,
     adapt_fraction,
     potential_func_njit,
     potential_derivative_njit,
     local_optimisor_njit,
+    temp_update_method="equal_accept",
+    feedback_damping=0.5,
 ):
     """
     Runs a parallel tempering Monte Carlo simulation across M temperature replicas
     to search for the global minimum potential energy.
 
-    :param start_coords: array_like, shape (M, N, 3),
-        Initial 3D coordinates of N particles for each of the M replicas.
-    :param start_energies: array_like, shape (M,),
-        Initial potential energies corresponding to start_coords for each replica.
-    :param M: int,
-        Number of temperature replicas.
-    :param temps: array_like, shape (M,),
-        Initial temperature ladder ordered strictly from lowest to highest temperature.
-    :param rho_bounds: tuple of (float, float),
-        Lower and upper bounds (rho_min, rho_max) on the log temperature spacings rho_t.
-    :param deltas: array_like, shape (M,),
-        Initial maximum single-atom displacement for each MC step for each temperature slot.
-    :param d_min: float,
-        Minimum allowed single-atom displacement step size during adaptation.
-    :param d_max: float,
-        Maximum allowed single-atom displacement step size during adaptation.
-    :param R_c: float,
-        Maximum confining sphere radius of the cluster.
-    :param swap_every: int,
-        Frequency (in sweeps) at which adjacent temperature swaps and adaptations are attempted.
-    :param target_accept_rate: float,
-        Target Monte Carlo step acceptance probability in (0, 1) for Robbins-Monro step-size adaptation.
-    :param gamma_scale: float,
-        Initial Robbins-Monro gain 'a' in gamma_n = a / (n + offset)^decay.
-    :param gamma_offset: float,
-        Stabilization offset 'n_0' in the Robbins-Monro step-size schedule.
-    :param gamma_decay: float,
-        Decay exponent 'kappa' in (0.5, 1.0] in the Robbins-Monro step-size schedule.
-    :param quench_every: int or None,
-        Frequency (in sweeps) at which low-temperature replicas are quenched via local optimization.
-        None disables periodic in-loop quenching.
-    :param quench_lowest_n: int,
-        Number of lowest-temperature slots to quench at each periodic quenching step.
-    :param N_sweeps: int,
-        Total number of Monte Carlo sweeps to perform per replica.
-    :param adapt_fraction: float,
-        Fraction in [0, 1] of N_sweeps during which temperatures and step sizes are adapted
-        before freezing for the remainder of the run.
-    :param potential_func_njit: callable,
-        Numba-compiled scalar pair potential function V(r).
-    :param potential_derivative_njit: callable,
-        Numba-compiled scalar pair potential derivative dV/dr.
-    :param local_optimisor_njit: callable,
-        Numba-compiled local optimizer used for quenching replicas.
-    :returns: tuple of (float, np.ndarray)
-        - best_energy -- Lowest potential energy found across all replicas during the simulation.
-        - best_coords -- Coordinates corresponding to best_energy, shape (N, 3).
+    :param temp_update_method: str,
+        Temperature adaptation strategy: "equal_accept" (Vousden/Atchadé Robbins-Monro)
+        or "feedback" (Katzgraber-Trebst-Huse-Troyer maximum round-trip flux).
+    :param feedback_damping: float,
+        Blending factor in (0, 1] used per epoch when temp_update_method="feedback".
     """
     # Validate M
     if isinstance(M, (bool, np.bool_)) or not isinstance(M, (int, np.integer)):
         raise TypeError("M must be an integer")
-    if M <= 0:
-        raise ValueError("M must be a positive integer")
+    if M < 2:
+        raise ValueError("M must be a positive integer and greater than 1")
 
     # Validate R_c
     if isinstance(R_c, (bool, np.bool_)) or not isinstance(R_c, (int, float, np.integer, np.floating)):
@@ -405,11 +780,28 @@ def parallel_tempering_run(
     if N_sweeps <= 0:
         raise ValueError("N_sweeps must be a positive integer")
 
+    # Validate boolean flags
+    if not isinstance(print_progress, (bool, np.bool_)):
+        raise TypeError("print_progress must be a boolean")
+    if not isinstance(print_diagnostics, (bool, np.bool_)):
+        raise TypeError("print_diagnostics must be a boolean")
+
     # Validate adapt_fraction
     if isinstance(adapt_fraction, (bool, np.bool_)) or not isinstance(adapt_fraction, (int, float, np.integer, np.floating)):
         raise TypeError("adapt_fraction must be a numeric value")
     if not np.isfinite(adapt_fraction) or not (0.0 <= adapt_fraction <= 1.0):
         raise ValueError("adapt_fraction must be between 0.0 and 1.0 inclusive")
+
+    # Validate temp_update_method and feedback_damping
+    if temp_update_method not in ("equal_accept", "feedback", "feedback_exact"):
+        raise ValueError("temp_update_method must be 'equal_accept', 'feedback', or 'feedback_exact'")
+    use_feedback_update = (temp_update_method == "feedback")
+    use_feedback_update_exact = (temp_update_method == "feedback_exact")
+
+    if isinstance(feedback_damping, (bool, np.bool_)) or not isinstance(feedback_damping, (int, float, np.integer, np.floating)):
+        raise TypeError("feedback_damping must be a numeric value")
+    if not np.isfinite(feedback_damping) or not (0.0 < feedback_damping <= 1.0):
+        raise ValueError("feedback_damping must be in the interval (0.0, 1.0]")
 
     # Validate rho_bounds
     if not isinstance(rho_bounds, (tuple, list)) or len(rho_bounds) != 2:
@@ -477,38 +869,77 @@ def parallel_tempering_run(
 
     wales_energy = cluster_potential(read_LJwales_data(len(coords_lst[0])), lennard_jones_potential)
     best_coords_out = np.empty_like(coords_lst[0])
+
+    # Pre-allocate diagnostic buffers (tiny 1D arrays; untouched when print_diagnostics=False)
+    diag_swap_attempts = np.zeros(max(1, int(M) - 1), dtype=np.int64)
+    diag_swap_accepts = np.zeros(max(1, int(M) - 1), dtype=np.int64)
+    diag_half_trips = np.zeros(int(M), dtype=np.int64)
+    diag_mc_accepted = np.zeros(int(M), dtype=np.float64)
+    diag_mc_moves = np.zeros(int(M), dtype=np.float64)
+    diag_max_r_stats = np.zeros(3, dtype=np.float64)
+    diag_best_info = np.zeros(4, dtype=np.float64)
+
     try:
         best_energy, best_coords = _pt_loop_njit(
-                coords_lst,
-                energies_lst,
-                best_coords_out,
-                wales_energy,
-                int(M),
-                temps_arr,
-                rho_bounds_tuple,
-                deltas_arr,
-                float(d_min),
-                float(d_max),
-                float(R_c),
-                int(swap_every),
-                float(target_accept_rate),
-                float(gamma_scale),
-                float(gamma_offset),
-                float(gamma_decay),
-                None if quench_every is None else int(quench_every),
-                int(quench_lowest_n),
-                int(N_sweeps),
-                print_progress,
-                float(adapt_fraction),
-                potential_func_njit,
-                potential_derivative_njit,
-                local_optimisor_njit,
-            )
+            coords_lst,
+            energies_lst,
+            best_coords_out,
+            wales_energy,
+            int(M),
+            temps_arr,
+            rho_bounds_tuple,
+            deltas_arr,
+            float(d_min),
+            float(d_max),
+            float(R_c),
+            int(swap_every),
+            float(target_accept_rate),
+            float(gamma_scale),
+            float(gamma_offset),
+            float(gamma_decay),
+            None if quench_every is None else int(quench_every),
+            int(quench_lowest_n),
+            int(N_sweeps),
+            bool(print_progress),
+            bool(print_diagnostics),
+            diag_swap_attempts,
+            diag_swap_accepts,
+            diag_half_trips,
+            diag_mc_accepted,
+            diag_mc_moves,
+            diag_max_r_stats,
+            diag_best_info,
+            float(adapt_fraction),
+            bool(use_feedback_update),
+            float(feedback_damping),
+            bool(use_feedback_update_exact),
+            potential_func_njit,
+            potential_derivative_njit,
+            local_optimisor_njit,
+        )
     except KeyboardInterrupt:
         print("\nInterrupted! Returning best coordinates found so far.")
         best_coords, best_energy, _, _ = local_optimisor_njit(
             best_coords_out, potential_derivative_njit, potential_func_njit
         )
+
+    if print_diagnostics:
+        _print_pt_diagnostics(
+            temps_arr,
+            deltas_arr,
+            float(d_min),
+            float(d_max),
+            float(R_c),
+            float(target_accept_rate),
+            diag_swap_attempts,
+            diag_swap_accepts,
+            diag_half_trips,
+            diag_mc_accepted,
+            diag_mc_moves,
+            diag_max_r_stats,
+            diag_best_info,
+        )
+
     return float(best_energy), best_coords
 
 
@@ -541,34 +972,39 @@ def make_start(N, M, R_c, cluster_pot_func):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    N = 78                                                  # Number of atoms in the cluster 
-    M = max(6, int(round(3.0 * np.sqrt(N))))                # Number of replicas; scales as ~3*sqrt(N) to keep adjacent energy overlap constant
-    R_c = round(1.3 * (N ** (1.0 / 3.0)), 2)                # Confining sphere radius (~1.3 * N^(1/3)): prevents evaporation without pinning surface atoms
-    swap_every = 3                                          # Sweeps between swap attempts, should be usually between 1 and 20
-    quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches (~30*N to 50*N so quenching stays cheap). 
-    quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench (~30-40% of M, targeting replicas near/below melting)
-    N_sweeps = 200*(N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
-    #T_min and T_max in the line below are VERY IMPORTANT, because they are fixed, even with iterative temp updates
-    temps = np.geomspace(0.04, 0.50, M)                     # Initial geometric ladder: T_min in deep solid (0.02-0.05), T_max above melting (~0.45-0.60)
-    deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements scaled via equipartition d_ref * sqrt(T / T_min), with d_ref ~ 0.05-0.10
-    d_min = 1e-4                                            # Lower bound on MC step size to prevent collapse if trapped at T_min
-    d_max = R_c                                             # Upper bound on MC step size (moves larger than R_c always hit the confining wall)
-    energies, coords = make_start(N, M, R_c, cluster_potential)  # Initial non-overlapping random cluster configurations and energies inside R_c - 0.5
-    adapt_fraction = 1.0                                    # Fraction of sweeps with active temperature adaptation (1.0 for global optimization; 0.2-0.5 if sampling equilibrium)
+    N = 40                                                  # Number of atoms in the cluster
+    M = 16                                                  # Number of replicas
+    R_c = round(1.3 * (N ** (1.0 / 3.0)), 2)                # Confining sphere radius (~1.3 * N^(1/3))
+    swap_every = 4                                          # Sweeps between swap attempts
+    quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches
+    quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench
+    N_sweeps = 100 * (N ** 2)                               # Total MC sweeps per replica
+    temps = np.geomspace(0.08, 0.40, M)                    # Initial geometric ladder
+    deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements
+    d_min = 1e-4                                            # Lower bound on MC step size
+    d_max = R_c                                             # Upper bound on MC step size
+    energies, coords = make_start(N, M, R_c, cluster_potential)
+    adapt_fraction = 1.0                                    # Adapt for first 50% of sweeps, then measure fixed-ladder diagnostics
 
-    rho_bounds = (-10.0, 10.0)                                # Min/max bounds on log temperature spacings rho_t to prevent ladder collapse, (-10, 10) is pretty much always fine
-    target_accept_rate = 0.234                              # Optimal multi-dimensional random-walk Metropolis acceptance rate (Roberts-Gelman-Gilks). 0.234 is found from literature.
-    gamma_scale = 0.5                                       # Initial Robbins-Monro gain 'a' in gamma_n = a / (n + offset)^decay, gamma_n is the step size for the temperature updates.
-    gamma_offset = 50.0                                     # Robbins-Monro offset to damp noisy early ladder/step-size jumps
-    gamma_decay = 0.6                                       # Robbins-Monro decay exponent in (0.5, 1.0] guaranteeing asymptotic convergence
+    temp_update_method = "feedback_exact"                         # "equal_accept" (Vousden/Atchadé) or "feedback" or "feedback_exact" (Katzgraber et al.)
+    feedback_damping = 0.5                                  # Damping factor per feedback epoch in (0, 1]
+
+    rho_bounds = (-10.0, 10.0)
+    target_accept_rate = 0.234
+    gamma_scale = 0.5
+    gamma_offset = 50.0
+    gamma_decay = 0.6
     print_progress = True
+    print_diagnostics = True
 
     t_start = time.perf_counter()
     best_e, best_c = parallel_tempering_run(
-        coords, energies, M, temps, rho_bounds, deltas, d_min, d_max, R_c, 
-        swap_every, target_accept_rate, gamma_scale, gamma_offset, gamma_decay, 
-        quench_every, quench_lowest_n, N_sweeps, print_progress, adapt_fraction, 
-        lennard_jones_potential_njit, lennard_jones_derivative_njit, lbfgs_njit
+        coords, energies, M, temps, rho_bounds, deltas, d_min, d_max, R_c,
+        swap_every, target_accept_rate, gamma_scale, gamma_offset, gamma_decay,
+        quench_every, quench_lowest_n, N_sweeps, print_progress, print_diagnostics, adapt_fraction,
+        lennard_jones_potential_njit, lennard_jones_derivative_njit, lbfgs_njit,
+        temp_update_method=temp_update_method,
+        feedback_damping=feedback_damping,
     )
     t_end = time.perf_counter()
 

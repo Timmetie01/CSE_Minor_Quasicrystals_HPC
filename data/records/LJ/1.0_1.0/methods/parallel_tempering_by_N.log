@@ -37,7 +37,7 @@
 
 
 
-
+25-11-2026 18:14:47  | N=  40 | LJ_1.0_1.0         | E =    -185.2498386151 | method = parallel_tempering   |                           | FIRST ATTEMPT (METHOD) | First attempt of PT using numba
 
 24-11-2026 21:28:20  | N=  42 | LJ_1.0_1.0         | E =    -196.2775335080 | method = parallel_tempering   | prev =    -195.5780087557 |      METHOD BEST       | First attempt of PT using numba
 
