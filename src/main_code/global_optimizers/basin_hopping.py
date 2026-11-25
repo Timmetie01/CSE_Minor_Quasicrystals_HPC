@@ -5,7 +5,7 @@ from src.main_code.local_optimizers.bfgs import LBFGS
 
 def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
                   local_optimizer: Callable = LBFGS, beta: float = 1.0, max_iter: int = 3000,
-                  perturbation_type: str = "random", delta: float = 1.0) -> tuple[np.ndarray, float, int, int]:
+                  perturbation_type: str = "random", delta: float = 1.6) -> tuple[np.ndarray, float, int, int]:
     '''
     Performs global geometry optimization of a particle cluster using the
     basin-hopping algorithm with Metropolis acceptance.
@@ -27,7 +27,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = p
         Method used to perturb the cluster. Default is "random".
     :param delta: float, optional
         Maximum displacement in each Cartesian direction for random perturbations.
-        Must be finite and positive when using random perturbation. Default is 1
+        Must be finite and positive when using random perturbation. Default is 1.6
     :returns: tuple of (np.ndarray, float, int, int)
         Coordinates of the lowest-energy configuration, its potential energy,
         number of iterations performed, and number of accepted moves.
@@ -117,14 +117,14 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = p
     return best_coords, best_energy, n_iter, n_accepted
 
 
-def random_perturbation(coords: np.ndarray, delta: float) -> np.ndarray:
+def random_perturbation(coords: np.ndarray, delta: float = 1.6) -> np.ndarray:
     '''
     Randomly perturbs the position of a single particle in a cluster.
 
     :param coords: array_like, shape (N, 3)
         Coordinates of N particles in 3D space.
     :param delta: float
-        Maximum displacement in each Cartesian direction.
+        Maximum displacement in each Cartesian direction. Default is 1.6
     :returns: ndarray, shape (N, 3)
         Perturbed coordinates of the cluster. Original coordinates are unchanged.
     '''
