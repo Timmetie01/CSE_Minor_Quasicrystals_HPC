@@ -1,7 +1,7 @@
 import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
-
+from src.main_code.local_optimizers.bfgs import LBFGS
 
 def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
                   local_optimizer: Callable = LBFGS, beta: float = 1.0, max_iter: int = 3000,
