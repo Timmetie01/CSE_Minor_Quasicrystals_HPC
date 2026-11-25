@@ -1,6 +1,7 @@
 import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
+from src.main_code.local_optimizers.bfgs import LBFGS
 from sklearn.ensemble import RandomForestClassifier
 from src.main_code.global_optimizers import basin_hopping as bh
 
@@ -436,9 +437,9 @@ def create_observation(
 
 
 
-def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
-                      local_optimizer_wrapper: Callable, beta: float, max_iter: int,
-                      perturbation_type: str = "random", delta: float | None = None, record_run : bool = False,
+def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
+                      local_optimizer_wrapper: Callable = LBFGS, beta: float =1.0, max_iter: int = 3000,
+                      perturbation_type: str = "random", delta: float = 1.0, record_run : bool = False,
                       run_id: int | None = None) -> tuple[np.ndarray, float, int, int] | tuple[np.ndarray, float, int, int, list[dict]]:
     
     '''
@@ -451,18 +452,21 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         The original coordinates are not modified.
     :param potential_function: callable
         Function calculating the pair potential between two particles.
+        Default is Lennard Jones
     :param local_optimizer_wrapper: callable
         Function that takes coordinates and returns locally optimized coordinates.
+        Default is LBFGS
     :param beta: float
         Inverse temperature parameter used in the Metropolis criterion (1/(k_b*T)).
-        Must be finite and non-negative.
+        Must be finite and non-negative. Default is 1
     :param max_iter: int
         Maximum number of basin-hopping iterations. Must be a positive integer.
+        Default is 3000
     :param perturbation_type: str, optional
         Method used to perturb the cluster. Default is "random".
     :param delta: float, optional
         Maximum displacement in each Cartesian direction for random perturbations.
-        Must be finite and positive.
+        Must be finite and positive. Default is 1
     :param record_run: bool, optional
         Whether to record an observation for every attempted perturbation,
         including accepted and rejected moves. Default is False.
@@ -695,44 +699,125 @@ def random_cluster(n_atoms: int,
 
 if __name__ == "__main__":
     from src.main_code.local_optimizers.bfgs import LBFGS
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.model_selection import train_test_split, GroupShuffleSplit
+    from sklearn.metrics import (
+        accuracy_score,
+        average_precision_score,
+        roc_auc_score,
+        classification_report,
+        confusion_matrix
+    )
     from pathlib import Path
     import pandas as pd
+
+    N_BH = 30
+    N_ITER = 2000
+    N_ATOMS = 50
 
     output_dir = Path("data/records/LJ/1.0_1.0/methods/ml_assisted_bh")
 
     def local_optimizer(coords):
-        return LBFGS(coords, pot.lennard_jones_derivative)
+        return LBFGS(coords, pot.lennard_jones_derivative, print_convergence=False)
 
-    initial_coords = random_cluster(
-        n_atoms=50,
-        characteristic_distance=2**(1/6),
-        density=0.5,
-        min_separation=0.8,
-        seed=42
-    )
+    #obs_list = []
+
+    # for i in range(N_BH):
+
+    #     initial_coords = random_cluster(
+    #         n_atoms=N_ATOMS,
+    #         characteristic_distance=2**(1/6),
+    #         density=0.5,
+    #         min_separation=0.8,
+    #         seed=i*10 + i
+    #     )
 
 
-    best_coords, best_energy, n_iter, n_accepted, observations = basin_hopping_opt(
-        input_coords=initial_coords,
-        potential_function=pot.lennard_jones_potential,
-        local_optimizer_wrapper=local_optimizer,
-        beta=1.0,
-        max_iter=15000,
-        delta=1,
-        record_run=True,
-        run_id=50
-    )
+    #     best_coords, best_energy, n_iter, n_accepted, observations = basin_hopping_opt(
+    #         input_coords=initial_coords,
+    #         potential_function=pot.lennard_jones_potential,
+    #         local_optimizer_wrapper=local_optimizer,
+    #         beta=1.0,
+    #         max_iter=N_ITER,
+    #         delta=1,
+    #         record_run=True,
+    #         run_id= i
+    #     )
+    #     obs_list.extend(observations)
+    #     print(
+    #     f"Run {i+1}/{N_BH} | "
+    #     f"Best energy: {best_energy:.6f} | "
+    #     f"Accepted: {n_accepted}/{n_iter}")
 
-    df = pd.DataFrame(observations)
+        
+    # df = pd.DataFrame(obs_list)
+    # df.to_csv(output_dir / f"ml_bh_50atoms_30runs_2000iter.csv", index=False)
 
-    print("Best energy:", best_energy)
-    print("Iterations:", n_iter)
-    print("Accepted moves:", n_accepted)
-    print("Observations:", len(observations))
-    print("\nFirst observation:")
-    print(df.head())
+    file_path = Path("data/records/LJ/1.0_1.0/methods/ml_assisted_bh/ml_bh_50atoms_30runs_2000iter.csv")
+    df = pd.read_csv(file_path)
 
-    df.to_csv(output_dir / f"ml_bh_50.csv", index=False)
+    # print(df.head())
+    # print(df.shape)
+
+    print("Dataset shape:", df.shape)
+    print("Number of runs:", df["run_id"].nunique())
+    print("Success rate:", df["success"].mean())
+    print("Acceptance rate:", df["accepted"].mean())
+    print("Missing values:", df.isna().sum().sum())
+
+    print("Near-zero energy changes:",
+      np.mean(np.abs(df["delta_energy"]) < 1e-5))
+
+    print("\nSuccess rate per run:")
+    print(df.groupby("run_id")["success"].mean())
+
+# Select inputs and dependent variable
+X = df[FEATURE_NAMES]
+y = df["success"].astype(int)
+
+# Split by independent basin-hopping run
+splitter = GroupShuffleSplit(
+    n_splits=1,
+    test_size=0.2,
+    random_state=42
+)
+
+train_idx, test_idx = next(
+    splitter.split(X, y, groups=df["run_id"])
+)
+
+X_train = X.iloc[train_idx]
+X_test = X.iloc[test_idx]
+
+y_train = y.iloc[train_idx]
+y_test = y.iloc[test_idx]
+
+# Train Random Forest
+model = RandomForestClassifier(
+    n_estimators=200,
+    min_samples_leaf=5,
+    random_state=42,
+    n_jobs=-1
+)
+
+model.fit(X_train, y_train)
+
+# Predict outcomes and probabilities
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+# Evaluate
+print("Test success rate:", y_test.mean())
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("ROC AUC:", roc_auc_score(y_test, y_prob))
+print("Average precision:", average_precision_score(y_test, y_prob))
+
+print("\nConfusion matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+print("\nClassification report:")
+print(classification_report(y_test, y_pred, zero_division=0))
+
 
     
    

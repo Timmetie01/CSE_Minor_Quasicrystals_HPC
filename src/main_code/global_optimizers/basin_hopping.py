@@ -2,9 +2,10 @@ import numpy as np
 from collections.abc import Callable
 from src.main_code import potentials_calculations as pot
 
-def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
-                  local_optimizer_wrapper: Callable, beta: float, max_iter: int,
-                  perturbation_type: str = "random", delta: float | None = None) -> tuple[np.ndarray, float, int, int]:
+
+def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
+                  local_optimizer: Callable = LBFGS, beta: float = 1.0, max_iter: int = 3000,
+                  perturbation_type: str = "random", delta: float = 1.0) -> tuple[np.ndarray, float, int, int]:
     '''
     Performs global geometry optimization of a particle cluster using the
     basin-hopping algorithm with Metropolis acceptance.
@@ -14,18 +15,19 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         The original coordinates are not modified.
     :param potential_function: callable
         Function calculating the pair potential between two particles.
-    :param local_optimizer_wrapper: callable
+    :param local_optimizer: callable
         Function that takes coordinates and returns locally optimized coordinates.
     :param beta: float
         Inverse temperature parameter used in the Metropolis criterion (1/(k_b*T)).
-        Must be finite and non-negative.
+        Must be finite and non-negative. Default is 1
     :param max_iter: int
         Maximum number of basin-hopping iterations. Must be a positive integer.
+        Default is 3000
     :param perturbation_type: str, optional
         Method used to perturb the cluster. Default is "random".
     :param delta: float, optional
         Maximum displacement in each Cartesian direction for random perturbations.
-        Must be finite and positive when using random perturbation.
+        Must be finite and positive when using random perturbation. Default is 1
     :returns: tuple of (np.ndarray, float, int, int)
         Coordinates of the lowest-energy configuration, its potential energy,
         number of iterations performed, and number of accepted moves.
@@ -79,7 +81,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
         raise ValueError("Coordinates must contain only finite values")
 
     # Initial local optimization
-    coords = local_optimizer_wrapper(coords)
+    coords = local_optimizer(coords)
     energy = pot.cluster_potential(coords, potential_function)
 
     best_coords = coords.copy()
@@ -96,7 +98,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable,
             pert_coords = random_perturbation(coords, delta)
 
         # Locally optimize perturbed coordinates
-        new_coords = local_optimizer_wrapper(pert_coords)
+        new_coords = local_optimizer(pert_coords)
         new_energy = pot.cluster_potential(new_coords, potential_function)
 
         delta_energy = new_energy - energy
