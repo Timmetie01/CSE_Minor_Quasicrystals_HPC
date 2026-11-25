@@ -4,7 +4,6 @@ from src.main_code.local_optimizers import fire, bfgs
 from src.main_code.global_optimizers import basin_hopping, genetic_algorithm, parallel_tempering, parallel_tempering_numba, simulated_annealing
 from collections.abc import Callable
 from data.data_handling import highscores
-from typing import Optional, Union
 
 class Potential:
     def __init__(self, potential_func: Callable, potential_derivative: Callable, 
@@ -88,7 +87,7 @@ class Optimizer:
         err_tol: float = 1e-5,
         dt: float = 0.002,
         max_step: float = 0.05,
-    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """
         Minimize the potential energy of a particle cluster using the Fast Inertial
         Relaxation Engine (FIRE) algorithm with Velocity Verlet integration.
@@ -152,7 +151,7 @@ class Optimizer:
         max_step: float = 0.1,
         keep_steps: bool = False,
         print_convergence: bool = False,
-    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """
         Minimize the potential energy of a particle cluster using the Broyden-Fletcher-
         Goldfarb-Shanno (BFGS) quasi-Newton algorithm with an Armijo backtracking
@@ -199,7 +198,7 @@ class Optimizer:
         m: int = 10,
         keep_steps: bool = False,
         print_convergence: bool = False,
-    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """
         Minimize the potential energy of an atomic cluster using the Limited-Memory
         Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) algorithm with two-loop recursion,
@@ -262,7 +261,7 @@ class Optimizer:
     def _build_single_cluster_local_opt(
         self,
         local_optimizer: str | Callable,
-        local_optimizer_kwargs: Optional[dict] = None,
+        local_optimizer_kwargs: dict | None,
     ) -> Callable[[np.ndarray], np.ndarray]:
         """
         Normalize any local optimizer into a uniform ``opt(coords) -> opt_coords`` callable,
@@ -279,7 +278,7 @@ class Optimizer:
             )
         return lambda coords: func(coords, self.potential_derivative, **kwargs)
 
-    def _log_highscore(self, opt_coords: np.ndarray, method_name: str, log_info: Optional[str]) -> None:
+    def _log_highscore(self, opt_coords: np.ndarray, method_name: str, log_info:str | None) -> None:
         """Record global optimization results to highscores unless ``log_info`` is None."""
         if log_info is not None:
             highscores(
@@ -297,13 +296,13 @@ class Optimizer:
         self,
         N_atoms: int,
         local_optimizer: str | Callable = bfgs.LBFGS,
-        local_optimizer_kwargs: Optional[dict] = None,
+        local_optimizer_kwargs: dict | None = None,
         beta: float = 1.0,
         max_iter: int = 10_000,
         perturbation_type: str = "random",
         delta: float = 1.5,
-        init_coords: Optional[np.ndarray] = None,
-        log_info: Optional[str] = "",
+        init_coords: np.ndarray | None = None,
+        log_info: str | None = "",
     ) -> np.ndarray:
         """
         Perform global geometry optimization of a particle cluster using the
@@ -362,16 +361,16 @@ class Optimizer:
         N_atoms: int,
         Pop_size: int = 50,
         local_optimizer: str | Callable = bfgs.LBFGS,
-        local_optimizer_kwargs: Optional[dict] = None,
+        local_optimizer_kwargs: dict | None = None,
         number_of_iterations: int = 100,
         elitism: int = 0,
         cutoff_perc: float = 0.5,
         max_attempts: int = 1000,
         mutation_prob: float = 0.25,
         max_frac: float = 0.15,
-        cube_length: Optional[float] = None,
-        seed: Optional[int] = None,
-        log_info: Optional[str] = "",
+        cube_length: float | None = None,
+        seed: int | None = None,
+        log_info: str | None = "",
     ) -> np.ndarray:
         """
         Perform global geometry optimization of a particle cluster using a Genetic Algorithm
@@ -468,10 +467,10 @@ class Optimizer:
         self,
         N_atoms: int,
         M: int = 10,
-        temps: Union[str, np.ndarray] = "Auto",
+        temps: str | np.ndarray = "Auto",
         T_min: float = 0.05,
         T_max: float = 0.40,
-        deltas: Union[str, np.ndarray] = "Auto",
+        deltas: str | np.ndarray = "Auto",
         d_ref: float = 0.1,
         T_ref: float = 0.05,
         R_c: float = 5.0,
@@ -479,8 +478,8 @@ class Optimizer:
         N_sweeps: int = 2000,
         quench: bool = False,
         local_optimizer: str | Callable = bfgs.LBFGS,
-        local_optimizer_kwargs: Optional[dict] = None,
-        log_info: Optional[str] = "",
+        local_optimizer_kwargs: dict | None = None,
+        log_info: str | None = "",
     ) -> np.ndarray:
         """
         Perform global geometry optimization of a particle cluster using adaptive
@@ -562,31 +561,31 @@ class Optimizer:
     def parallel_tempering_numba(
         self,
         N_atoms: int,
-        M: Optional[int] = None,
-        temps: Union[str, np.ndarray] = "Auto",
+        M: int | None = None,
+        temps: str |np.ndarray = "Auto",
         T_min: float = 0.04,
         T_max: float = 0.50,
         rho_bounds: tuple[float, float] = (-10.0, 10.0),
-        deltas: Union[str, np.ndarray] = "Auto",
+        deltas: str | np.ndarray = "Auto",
         d_ref: float = 0.08,
-        T_ref: Optional[float] = None,
+        T_ref: float | None = None,
         d_min: float = 1e-4,
-        d_max: Optional[float] = None,
-        R_c: Optional[float] = None,
+        d_max: float | None = None,
+        R_c: float | None = None,
         swap_every: int = 3,
         target_accept_rate: float = 0.234,
         gamma_scale: float = 0.5,
         gamma_offset: float = 50.0,
         gamma_decay: float = 0.6,
-        quench_every: Optional[int] = None,
-        quench_lowest_n: Optional[int] = None,
-        N_sweeps: Optional[int] = None,
+        quench_every: int | None = None,
+        quench_lowest_n: int | None = None,
+        N_sweeps: int | None = None,
         print_progress: bool = False,
         adapt_fraction: float = 1.0,
         potential_func_njit: Callable = potentials_calculations.lennard_jones_potential_njit,
         potential_derivative_njit: Callable = potentials_calculations.lennard_jones_derivative_njit,
         local_optimisor_njit: Callable = bfgs.lbfgs_njit,
-        log_info: Optional[str] = "",
+        log_info: str | None = "",
     ) -> np.ndarray:
         """
         Perform global geometry optimization of a particle cluster using Numba-accelerated
@@ -723,16 +722,16 @@ class Optimizer:
         self,
         N_atoms: int,
         local_optimizer: str | Callable = bfgs.LBFGS,
-        local_optimizer_kwargs: Optional[dict] = None,
+        local_optimizer_kwargs: dict | None = None,
         T_start: float = 1.0,
         T_end: float = 0.01,
         steps_per_atom: int = 20_000,
         step_size: float = 0.2,
-        radius: Optional[float] = None,
+        radius: float | None = None,
         target_acceptance: float = 0.45,
         adapt_every: int = 1000,
         seed: int = 0,
-        log_info: Optional[str] = "",
+        log_info: str | None = "",
     ) -> np.ndarray:
         """
         Perform global geometry optimization of a particle cluster using Simulated
