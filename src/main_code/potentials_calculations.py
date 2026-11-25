@@ -361,6 +361,124 @@ def lennard_jones_derivative_njit(r: float, epsilon: float = 1.0, sigma: float =
     r6 = r2 * r2 * r2
     return 24.0 * epsilon / sigma * r6 * r1 * (1.0 - 2.0 * r6)
 
+def make_lennard_jones_potential_njit(epsilon=1.0, sigma=1.0):
+    """Create a Numba-compiled scalar Lennard-Jones potential V(r)."""
+    eps = float(epsilon)
+    sig = float(sigma)
+
+    @njit
+    def potential_njit(r):
+        inv_r = sig / r
+        inv_r2 = inv_r * inv_r
+        r6 = inv_r2 * inv_r2 * inv_r2
+        return 4.0 * eps * (r6 * r6 - r6)
+
+    return potential_njit
+
+
+def make_lennard_jones_derivative_njit(epsilon=1.0, sigma=1.0):
+    """Create a Numba-compiled scalar Lennard-Jones derivative dV/dr."""
+    eps = float(epsilon)
+    sig = float(sigma)
+
+    @njit
+    def derivative_njit(r):
+        r1 = sig / r
+        r2 = r1 * r1
+        r6 = r2 * r2 * r2
+        return 24.0 * eps / sig * r6 * r1 * (1.0 - 2.0 * r6)
+
+    return derivative_njit
+
+
+@njit
+def oscillating_pair_potential_njit(r: float, frequency: float = 1.0, phase_shift: float = 0.0) -> float:
+    """Scalar Numba-compiled raw oscillating pair potential V(r)."""
+    return (r ** -15) + (r ** -3) * np.cos(frequency * (r - 1.25) - phase_shift)
+
+
+@njit
+def oscillating_pair_derivative_njit(r: float, frequency: float = 1.0, phase_shift: float = 0.0) -> float:
+    """Scalar Numba-compiled raw oscillating pair derivative dV/dr."""
+    trig_input = frequency * (r - 1.25) - phase_shift
+    return (
+        -15.0 * (r ** -16)
+        - 3.0 * (r ** -4) * np.cos(trig_input)
+        - frequency * (r ** -3) * np.sin(trig_input)
+    )
+
+
+def make_oscillating_pair_potential_njit(frequency: float = 1.0, phase_shift: float = 0.0):
+    """Create a Numba-compiled scalar raw oscillating pair potential V(r)."""
+    freq = float(frequency)
+    phase = float(phase_shift)
+
+    @njit
+    def potential_njit(r):
+        return (r ** -15) + (r ** -3) * np.cos(freq * (r - 1.25) - phase)
+
+    return potential_njit
+
+
+def make_oscillating_pair_derivative_njit(frequency: float = 1.0, phase_shift: float = 0.0):
+    """Create a Numba-compiled scalar raw oscillating pair derivative dV/dr."""
+    freq = float(frequency)
+    phase = float(phase_shift)
+
+    @njit
+    def derivative_njit(r):
+        trig_input = freq * (r - 1.25) - phase
+        return (
+            -15.0 * (r ** -16)
+            - 3.0 * (r ** -4) * np.cos(trig_input)
+            - freq * (r ** -3) * np.sin(trig_input)
+        )
+
+    return derivative_njit
+
+
+def make_tapered_oscillating_pair_potential_njit(frequency: float = 6.0, phase_shift: float = 0.59):
+    """Create a Numba-compiled scalar tapered oscillating pair potential V(r)."""
+    cutoff, width, V0, D0, c2, c3 = get_oscillating_pair_spline_coefficients(frequency, phase_shift)
+    r_end = cutoff + width
+    freq = float(frequency)
+    phase = float(phase_shift)
+
+    @njit
+    def potential_njit(r):
+        if r < cutoff:
+            return (r ** -15) + (r ** -3) * np.cos(freq * (r - 1.25) - phase)
+        elif r < r_end:
+            t = (r - cutoff) / width
+            return V0 + t * (D0 + t * (c2 + t * c3))
+        return 0.0
+
+    return potential_njit
+
+
+def make_tapered_oscillating_pair_derivative_njit(frequency: float = 6.0, phase_shift: float = 0.59):
+    """Create a Numba-compiled scalar tapered oscillating pair derivative dV/dr."""
+    cutoff, width, V0, D0, c2, c3 = get_oscillating_pair_spline_coefficients(frequency, phase_shift)
+    r_end = cutoff + width
+    freq = float(frequency)
+    phase = float(phase_shift)
+
+    @njit
+    def derivative_njit(r):
+        if r < cutoff:
+            trig_input = freq * (r - 1.25) - phase
+            return (
+                -15.0 * (r ** -16)
+                - 3.0 * (r ** -4) * np.cos(trig_input)
+                - freq * (r ** -3) * np.sin(trig_input)
+            )
+        elif r < r_end:
+            t = (r - cutoff) / width
+            return (D0 + t * (2.0 * c2 + 3.0 * c3 * t)) / width
+        return 0.0
+
+    return derivative_njit
+
 @njit
 def single_atom_potential_njit(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential_njit) -> float:
     """
