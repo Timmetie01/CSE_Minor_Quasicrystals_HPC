@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from src.main_code.global_optimizers import ml_basin_hopping as mlbh
+
+from src.main_code.global_optimizers import ml_assisted_bh as mlbh
 from src.main_code.local_optimizers.bfgs import LBFGS
 from src.main_code.potentials_calculations import (
     make_lennard_jones_potential,
@@ -8,14 +9,14 @@ from src.main_code.potentials_calculations import (
     cluster_potential,
 )
    
-@pytest.mark.parametrize("n_atoms, known_global_min_energy", "max_iter", [
+@pytest.mark.parametrize("n_atoms, known_global_min_energy, max_iter", [
         (10, -28.422532, 100),
         (25, -102.372663, 500),
         (50, -244.549926, 1000),
         (80, -428.083564, 2000),
     ])    
     
-def test_ml_basin_hopping_increasing_lj_cluster(n_atoms, known_global_min_energy, max_iter=100):
+def test_ml_basin_hopping_increasing_lj_cluster(n_atoms, known_global_min_energy, max_iter):
     np.random.seed(42)
     initial_coords = np.random.rand(n_atoms, 3) * 5.0
 
