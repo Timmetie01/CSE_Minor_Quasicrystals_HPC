@@ -1,17 +1,19 @@
 from src.main_code.potentials_calculations import cluster_potential_gradient, cluster_potential, lennard_jones_derivative, lennard_jones_potential
 import numpy as np
 import warnings
+from collections import deque
+from collections.abc import Callable
 
 
 def BFGS(
         x, 
-        potential_derivative_func: callable = lennard_jones_derivative, 
-        potential_func: callable = lennard_jones_potential, 
+        potential_derivative_func: Callable = lennard_jones_derivative, 
+        potential_func: Callable = lennard_jones_potential, 
         tol: float = 1e-5, 
         max_iter: int = 1000, 
         max_step:float = 0.1, 
         keep_steps: bool = False,
-        print_convergence = True
+        print_convergence: bool = True
         ):
     
     '''
@@ -138,7 +140,7 @@ def BFGS(
 
 
     # 4: Returning coordinates
-    if print_convergence and np.max(np.abs(gradx)) >= tol:
+    if np.max(np.abs(gradx)) >= tol:
         warnings.warn("BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
     elif print_convergence:
         print(f"BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
@@ -186,19 +188,6 @@ def validate_bfgs_data(x_arr, potential_derivative_func, potential_func, max_ite
             raise ValueError(f"{name} must be > 0, got {val}.")
 
 
-
-
-from collections import deque
-from collections.abc import Callable
-from src.main_code.potentials_calculations import (
-    cluster_potential_gradient,
-    cluster_potential,
-    lennard_jones_derivative,
-    lennard_jones_potential,
-)
-import numpy as np
-
-
 def LBFGS(
     x: np.ndarray,
     potential_derivative_func: Callable = lennard_jones_derivative,
@@ -208,7 +197,7 @@ def LBFGS(
     max_step: float = 0.1,
     m: int = 10,
     keep_steps: bool = False,
-    print_convergence = True
+    print_convergence: bool = True
     ):
 
     '''
@@ -357,7 +346,7 @@ def LBFGS(
 
 
     # 4: Returning coordinates
-    if print_convergence and np.max(np.abs(gradx)) >= tol:
+    if np.max(np.abs(gradx)) >= tol:
         warnings.warn("L-BFGS optimizer reached its max iteration count without converging, returning non-optimal coordinates...", RuntimeWarning)
     elif print_convergence:
         print(f"L-BFGS optimizer converged in {n_iter} iterations, returning optimal coordinates...")
