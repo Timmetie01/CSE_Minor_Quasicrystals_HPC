@@ -65,7 +65,7 @@ def plot_FIRE_convergence(coords_init, potential_func=lennard_jones_potential, p
 
 
 def plot_cluster(coords, potential_str="LJ", potential_params=(1,1), show_bonds=True, 
-                 atom_radius=0.4, bond_radius=0.05, atom_color="steelblue", bond_color="lightgray", 
+                 atom_radius=0.4, bond_radius=0.05, atom_color="pale_turquoise", bond_color="lemon_chiffon", 
                  sphere_resolution=20, bond_resolution=20, smooth_shading=True):
     """
     3-dimensionally plots a cluster of atoms, optionally also showing bonds. 

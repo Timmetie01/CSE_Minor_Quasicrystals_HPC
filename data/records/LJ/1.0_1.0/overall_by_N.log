@@ -39,12 +39,17 @@
 23-11-2026 12:21:10  | N=  39 | LJ_1.0_1.0         | E =    -176.1675272149 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:20  | N=  40 | LJ_1.0_1.0         | E =    -180.5589367760 | method = pure_lbfgs           | prev =    -179.0272952622 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:24  | N=  41 | LJ_1.0_1.0         | E =    -185.9355541448 | method = pure_lbfgs           | prev =    -183.7994995791 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
-23-11-2026 12:21:16  | N=  42 | LJ_1.0_1.0         | E =    -191.7236577695 | method = pure_lbfgs           | prev =    -190.3240253787 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
+24-11-2026 21:28:20  | N=  42 | LJ_1.0_1.0         | E =    -196.2775335080 | method = parallel_tempering   | prev =    -195.5780087557 |      OVERALL BEST      | First attempt of PT using numba
 23-11-2026 12:21:24  | N=  43 | LJ_1.0_1.0         | E =    -197.6248176640 | method = pure_lbfgs           | prev =    -195.5949349454 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:25  | N=  44 | LJ_1.0_1.0         | E =    -202.1313203757 | method = pure_lbfgs           | prev =    -199.3947412369 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:36  | N=  45 | LJ_1.0_1.0         | E =    -208.5622498344 | method = pure_lbfgs           | prev =    -208.4534424964 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:47  | N=  46 | LJ_1.0_1.0         | E =    -214.4651554602 | method = pure_lbfgs           | prev =    -213.9956928030 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:17  | N=  47 | LJ_1.0_1.0         | E =    -219.4051503537 | method = pure_lbfgs           | prev =    -217.0731733078 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 23-11-2026 12:21:33  | N=  48 | LJ_1.0_1.0         | E =    -226.3227743109 | method = pure_lbfgs           | prev =    -224.4444858155 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
-23-11-2026 12:21:33  | N=  49 | LJ_1.0_1.0         | E =    -230.6408877783 | method = pure_lbfgs           | prev =    -228.2278274203 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
-23-11-2026 12:21:13  | N=  50 | LJ_1.0_1.0         | E =    -243.8352272435 | method = pure_lbfgs           |                           |     FIRST ATTEMPT      | Initial highscores function testing, using LBFGS
+24-11-2026 18:59:07  | N=  49 | LJ_1.0_1.0         | E =    -239.0918642339 | method = parallel_tempering   | prev =    -230.6408877783 |      OVERALL BEST      | First attempt of PT using numba
+24-11-2026 18:17:44  | N=  50 | LJ_1.0_1.0         | E =    -244.5499263274 | method = parallel_tempering   | prev =    -244.1630596844 |      OVERALL BEST      | First attempt of PT using numba
+25-11-2026 12:28:43  | N=  51 | LJ_1.0_1.0         | E =    -251.2539640366 | method = parallel_tempering   | prev =    -251.1778386336 |      OVERALL BEST      | First attempt of PT using numba
+
+
+
+24-11-2026 21:40:09  | N=  55 | LJ_1.0_1.0         | E =    -279.2484704630 | method = parallel_tempering   |                           |     FIRST ATTEMPT      | First attempt of PT using numba
