@@ -48,7 +48,7 @@
 23-11-2026 12:21:33  | N=  48 | LJ_1.0_1.0         | E =    -226.3227743109 | method = pure_lbfgs           | prev =    -224.4444858155 |      OVERALL BEST      | Initial highscores function testing, using LBFGS
 24-11-2026 18:59:07  | N=  49 | LJ_1.0_1.0         | E =    -239.0918642339 | method = parallel_tempering   | prev =    -230.6408877783 |      OVERALL BEST      | First attempt of PT using numba
 24-11-2026 18:17:44  | N=  50 | LJ_1.0_1.0         | E =    -244.5499263274 | method = parallel_tempering   | prev =    -244.1630596844 |      OVERALL BEST      | First attempt of PT using numba
-24-11-2026 18:27:07  | N=  51 | LJ_1.0_1.0         | E =    -251.1778386336 | method = parallel_tempering   |                           |     FIRST ATTEMPT      | First attempt of PT using numba
+25-11-2026 12:28:43  | N=  51 | LJ_1.0_1.0         | E =    -251.2539640366 | method = parallel_tempering   | prev =    -251.1778386336 |      OVERALL BEST      | First attempt of PT using numba
 
 
 

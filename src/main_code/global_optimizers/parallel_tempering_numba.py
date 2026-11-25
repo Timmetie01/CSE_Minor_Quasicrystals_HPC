@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from numba import njit
+from numba import njit, objmode
 from src.main_code.potentials_calculations import (
     lennard_jones_potential,
     cluster_potential,
@@ -14,8 +14,13 @@ from src.main_code.monte_carlo_sweep import mc_sweep, mc_sweep_njit
 from src.main_code.local_optimizers.fire import FIRE
 from src.main_code.local_optimizers.bfgs import LBFGS, lbfgs_njit
 from src.main_code.visualization import plot_cluster
-from data.data_handling import highscores
+from data.data_handling import highscores, read_LJwales_data
 
+
+@njit
+def _check_interrupt():
+    with objmode():
+        pass  # Entering objmode acquires the GIL and triggers any pending KeyboardInterrupt
 
 @njit
 def attempt_temp_swaps_njit(M, replica_at, betas, energies, attempt_count):
@@ -121,6 +126,7 @@ def update_temp_ladder_njit(
 def _pt_loop_njit(
     coords_lst,
     energies_lst,
+    wales_energy,
     M,
     temps_arr,
     rho_bounds,
@@ -136,10 +142,11 @@ def _pt_loop_njit(
     quench_every,
     quench_lowest_n,
     N_sweeps,
+    print_progress,
+    adapt_fraction,
     potential_func_njit,
     potential_derivative_njit,
     local_optimisor_njit,
-    adapt_fraction=1.0,
 ):
     """
     Parallel Tempering inner loop using numba.
@@ -235,9 +242,16 @@ def _pt_loop_njit(
                 if q_energy < best_energy:
                     best_energy = q_energy
                     best_coords = q_coords
+        if print_progress and(i + 1) % 100 == 0:
+            _check_interrupt()
+            pct = int(round(100.0 * (i + 1) / N_sweeps))
+            print("Progress:", pct, "% | Sweep:", i + 1, "/", N_sweeps, "| Best energy:", best_energy, "| Wales LJ energy:", wales_energy)
     print("Temperatures at end", temps_arr)
     #Quench:
-    best_coords, best_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
+    final_coords, final_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
+    if final_energy < best_energy:
+        best_energy = final_energy
+        best_coords = final_coords
     return best_energy, best_coords
 
 
@@ -259,6 +273,7 @@ def parallel_tempering_run(
     quench_every,
     quench_lowest_n,
     N_sweeps,
+    print_progress,
     adapt_fraction,
     potential_func_njit,
     potential_derivative_njit,
@@ -455,9 +470,11 @@ def parallel_tempering_run(
     if not np.all(np.isfinite(energies_lst)):
         raise ValueError("start_energies must contain only finite values")
 
+    wales_energy = cluster_potential(read_LJwales_data(len(coords_lst[0])), lennard_jones_potential)
     best_energy, best_coords = _pt_loop_njit(
         coords_lst,
         energies_lst,
+        wales_energy,
         int(M),
         temps_arr,
         rho_bounds_tuple,
@@ -473,6 +490,7 @@ def parallel_tempering_run(
         None if quench_every is None else int(quench_every),
         int(quench_lowest_n),
         int(N_sweeps),
+        print_progress,
         float(adapt_fraction),
         potential_func_njit,
         potential_derivative_njit,
@@ -510,13 +528,13 @@ def make_start(N, M, R_c, cluster_pot_func):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    N = 13                                                  # Number of atoms in the cluster 
+    N = 51                                                  # Number of atoms in the cluster 
     M = max(6, int(round(3.0 * np.sqrt(N))))                # Number of replicas; scales as ~3*sqrt(N) to keep adjacent energy overlap constant
     R_c = round(1.3 * (N ** (1.0 / 3.0)), 2)                # Confining sphere radius (~1.3 * N^(1/3)): prevents evaporation without pinning surface atoms
     swap_every = 3                                          # Sweeps between swap attempts, should be usually between 1 and 20
     quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches (~30*N to 50*N so quenching stays cheap). 
     quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench (~30-40% of M, targeting replicas near/below melting)
-    N_sweeps = 300 * (N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
+    N_sweeps = 100*(N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
     #T_min and T_max in the line below are VERY IMPORTANT, because they are fixed, even with iterative temp updates
     temps = np.geomspace(0.04, 0.50, M)                     # Initial geometric ladder: T_min in deep solid (0.02-0.05), T_max above melting (~0.45-0.60)
     deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements scaled via equipartition d_ref * sqrt(T / T_min), with d_ref ~ 0.05-0.10
@@ -530,17 +548,19 @@ if __name__ == "__main__":
     gamma_scale = 0.5                                       # Initial Robbins-Monro gain 'a' in gamma_n = a / (n + offset)^decay, gamma_n is the step size for the temperature updates.
     gamma_offset = 50.0                                     # Robbins-Monro offset to damp noisy early ladder/step-size jumps
     gamma_decay = 0.6                                       # Robbins-Monro decay exponent in (0.5, 1.0] guaranteeing asymptotic convergence
+    print_progress = True
 
     t_start = time.perf_counter()
     best_e, best_c = parallel_tempering_run(
         coords, energies, M, temps, rho_bounds, deltas, d_min, d_max, R_c, 
         swap_every, target_accept_rate, gamma_scale, gamma_offset, gamma_decay, 
-        quench_every, quench_lowest_n, N_sweeps, adapt_fraction, 
+        quench_every, quench_lowest_n, N_sweeps, print_progress, adapt_fraction, 
         lennard_jones_potential_njit, lennard_jones_derivative_njit, lbfgs_njit
     )
     t_end = time.perf_counter()
 
     print(f"PT runtime: {t_end - t_start:.4f} s")
     print("Quenched global energy minimum:", best_e, "for:", N, "atoms.")
+    print("Wales databas energy minimum:", cluster_potential(read_LJwales_data(N), lennard_jones_potential))
     highscores(best_c, "parallel_tempering", "LJ", (1, 1), "First attempt of PT using numba")
     plot_cluster(best_c)
