@@ -133,6 +133,109 @@ def make_oscillating_pair_derivative(frequency=1.0, phase_shift=0.0):
     return potential_derivative
 
 
+def get_oscillating_pair_spline_coefficients(frequency=6.0, phase_shift=0.59):
+    '''
+    Calculate the parameters needed to build a cubic spline to smoothen an oscillating pair potential and derivative dV/dr, 
+    such that they stop oscillating after three wells.
+
+    :param frequency: float, optional,
+        Frequency of the oscillation (5.5 =< frequency =< 9.5).
+    :param phase_shift: float, optional,
+        Phase shift of the oscillation (0.36 =< phase shift =< 0.82).
+    :returns: cutoff, width, V0, dV0, D0, c2, c3,
+        Respectively the distance at which the spline begins, the width of the spline and the spline's four coefficients.
+    '''
+
+    if (frequency < 5.5) or (frequency > 9.5):
+        raise ValueError("frequency outside of permitted region.")
+
+    if (phase_shift < 0.36) or (phase_shift > 0.82):
+            raise ValueError("phase shift outside of permitted region.")
+    
+    cutoff = 1.25 + (phase_shift + 3.3 * np.pi) / frequency
+
+    width = 0.5 * np.pi / abs(frequency)
+
+    V0 = float((cutoff**-15) + (cutoff**-3) * np.cos(frequency * (cutoff - 1.25) - phase_shift))
+    dV0 = float(-15.0 * (cutoff**-16) - 3.0 * (cutoff**-4) * np.cos(frequency * (cutoff - 1.25) - phase_shift) - frequency * (cutoff**-3) * np.sin(frequency * (cutoff - 1.25) - phase_shift))
+    D0 = width * dV0
+    c2 = -3.0 * V0 - 2.0 * D0
+    c3 = 2.0 * V0 + D0
+
+    return cutoff, width, V0, D0, c2, c3
+
+
+def make_tapered_oscillating_pair_potential(frequency=6.0, phase_shift=0.59):
+    '''
+    Calculate an oscillating pair potential for a given distance, 
+    tapered using a cubic spline to stop oscillating after three wells.
+    https://www.nature.com/articles/nmat4152.pdf
+
+    :param r: float or array_like,
+        Distance between two particles.
+    :param frequency: float, optional,
+        Frequency of the oscillation (5.5 =< frequency =< 9.5).
+    :param phase_shift: float, optional,
+        Phase shift of the oscillation (0.36 =< phase shift =< 0.82).
+    :returns: float or array_like,
+        Oscillating pair potential at distance r.
+    '''
+    cutoff, width, V0, D0, c2, c3 = get_oscillating_pair_spline_coefficients(frequency, phase_shift)
+    r_end = cutoff + width
+    def potential(r):
+        r_arr = np.asarray(r, dtype=float)
+        out = np.zeros_like(r_arr)
+
+        core = r_arr < cutoff
+        if np.any(core):
+            r_core = r_arr[core]
+            out[core] = (r_core**-15) + (r_core**-3) * np.cos(frequency * (r_core - 1.25) - phase_shift)
+        
+        tail = (~core) & (r_arr < r_end)
+        if np.any(tail):
+            t = (r_arr[tail] - cutoff) / width
+            out[tail] = V0 + t * (D0 + t * (c2 + t * c3))
+
+        return out
+    return potential
+
+
+def make_tapered_oscillating_pair_derivative(frequency=6.0, phase_shift=0.59):
+    '''
+    Calculate an oscillating pair derivative dV/dr for a given distance, 
+    tapered using a cubic spline to stop oscillating after three wells.
+    https://www.nature.com/articles/nmat4152.pdf
+
+    :param r: float or array_like,
+        Distance between two particles.
+    :param frequency: float, optional,
+        Frequency of the oscillation (5.5 =< frequency =< 9.5).
+    :param phase_shift: float, optional,
+        Phase shift of the oscillation (0.36 =< phase shift =< 0.82).
+    :returns: float or array_like,
+        Oscillating pair's derivative dV/dr at distance r and it's derivative.
+    '''
+    cutoff, width, V0, D0, c2, c3 = get_oscillating_pair_spline_coefficients(frequency, phase_shift)
+    r_end = cutoff + width
+    def potential_derivative(r):
+        r_arr = np.asarray(r, dtype=float)
+        out = np.zeros_like(r_arr)
+
+        core = r_arr < cutoff
+        if np.any(core):
+            r_core = r_arr[core]
+            trig_input = frequency * (r_core - 1.25) - phase_shift
+            out[core] = (-15.0 * (r_core**-16) - 3.0 * (r_core**-4) * np.cos(trig_input) - frequency * (r_core**-3) * np.sin(trig_input))
+
+        tail = (~core) & (r_arr < r_end)
+        if np.any(tail):
+            t = (r_arr[tail] - cutoff) / width
+            out[tail] = (D0 + t * (2.0 * c2 + 3.0 * c3 * t)) / width
+        
+        return out
+    return potential_derivative
+
+
 def single_atom_potential(coords: np.ndarray, idx: int, potential_func=lennard_jones_potential):
     '''
     Calculate the total potential of one atom with the rest for any arbitrary potential function
