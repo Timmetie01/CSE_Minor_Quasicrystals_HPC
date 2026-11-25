@@ -1,4 +1,4 @@
-from src.main_code.local_optimizers import fire, bfgs, LBFGS, lbfgs_njit
+from src.main_code.local_optimizers import fire, bfgs
 from src.main_code.potentials_calculations import cluster_potential, lennard_jones_potential, lennard_jones_derivative, cluster_potential_njit, lennard_jones_potential_njit, lennard_jones_derivative_njit
 import numpy as np
 import pytest
@@ -806,7 +806,7 @@ def test_lbfgs_njit_matches_lbfgs():
             max_iter=1000,
             print_convergence=False,
         )
-        res_njit, e_njit, _, converged = lbfgs_njit(
+        res_njit, e_njit, _, converged = bfgs.lbfgs_njit(
             coords_njit_in,
             lennard_jones_derivative_njit,
             lennard_jones_potential_njit,
@@ -846,7 +846,7 @@ def test_lbfgs_njit_matches_lbfgs():
         max_iter=1000,
         print_convergence=False,
     )
-    res_njit_10, e_njit_10, _, converged_10 = lbfgs_njit(
+    res_njit_10, e_njit_10, _, converged_10 = bfgs.lbfgs_njit(
         coords_10.copy(),
         lennard_jones_derivative_njit,
         lennard_jones_potential_njit,

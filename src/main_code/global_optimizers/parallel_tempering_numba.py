@@ -6,17 +6,19 @@ from src.main_code.potentials_calculations import (
     cluster_potential,
     lennard_jones_derivative,
     lennard_jones_potential_njit,
+    lennard_jones_derivative_njit,
     single_atom_potential_njit,
+    cluster_potential_njit
 )
 from src.main_code.monte_carlo_sweep import mc_sweep, mc_sweep_njit
 from src.main_code.local_optimizers.fire import FIRE
-from src.main_code.local_optimizers.bfgs import LBFGS
+from src.main_code.local_optimizers.bfgs import LBFGS, lbfgs_njit
 from src.main_code.visualization import plot_cluster
 from data.data_handling import highscores
 
 
 @njit
-def attempt_temp_swaps(M, replica_at, betas, energies, attempt_count):
+def attempt_temp_swaps_njit(M, replica_at, betas, energies, attempt_count):
     """
     Attempts to swap configurations between adjacent temperatures using the parallel tempering Metropolis criterion.
     Modifies replica_at in place.
@@ -40,14 +42,13 @@ def temps_to_rho(temps: np.ndarray) -> np.ndarray:
 
 
 @njit
-def update_temp_ladder(
+def update_temp_ladder_njit(
     rho: np.ndarray,
     energies: np.ndarray,
     replica_at: np.ndarray,
     betas: np.ndarray,
     T_min: float,
     T_max: float,
-    k_b: float,
     step_size: float,
     rho_bounds: tuple = (-6.0, 6.0),
 ):
@@ -99,7 +100,7 @@ def update_temp_ladder(
     betas_next = np.empty(M, dtype=np.float64)
 
     temps_next[0] = T_min
-    betas_next[0] = 1.0 / (k_b * T_min)
+    betas_next[0] = 1.0 / (T_min)
 
     span = T_max - T_min
     cum_w = 0.0
@@ -107,11 +108,11 @@ def update_temp_ladder(
         cum_w += weights[t] / sum_w
         t_val = T_min + span * cum_w
         temps_next[t + 1] = t_val
-        betas_next[t + 1] = 1.0 / (k_b * t_val)
+        betas_next[t + 1] = 1.0 / (t_val)
 
     # Pin the top endpoint identically to T_max (avoids floating-point drift)
     temps_next[M - 1] = T_max
-    betas_next[M - 1] = 1.0 / (k_b * T_max)
+    betas_next[M - 1] = 1.0 / (T_max)
 
     return rho_next, temps_next, betas_next
 
@@ -122,13 +123,22 @@ def _pt_loop_njit(
     energies_lst,
     M,
     temps_arr,
+    rho_bounds,
     deltas_arr,
+    d_min,
+    d_max,
     R_c,
     swap_every,
+    target_accept_rate,
+    gamma_scale,
+    gamma_offset,
+    gamma_decay,
     quench_every,
+    quench_lowest_n,
     N_sweeps,
     potential_func_njit,
-    local_optimisor,
+    potential_derivative_njit,
+    local_optimisor_njit,
     adapt_fraction=1.0,
 ):
     """
@@ -138,16 +148,15 @@ def _pt_loop_njit(
     T_max = temps_arr[-1]
     rho = np.log(np.diff(temps_arr) / (T_max - T_min))
     replica_at = np.arange(M)
-    k_b = 1.0
-    betas = 1.0 / (k_b * temps_arr)
+    betas = 1.0 /temps_arr
 
     n_atoms = coords_lst.shape[1]
     n_moves = n_atoms
     attempt_count = 0
 
     log_deltas = np.log(deltas_arr)
-    log_d_min = np.log(1e-4)
-    log_d_max = np.log(R_c)
+    log_d_min = np.log(d_min)
+    log_d_max = np.log(d_max)
     slot_accepted = np.zeros(M, dtype=np.float64)
     moves_per_window = float(swap_every * n_moves)
     adapt_cutoff = int(adapt_fraction * N_sweeps)
@@ -196,18 +205,18 @@ def _pt_loop_njit(
                     coords_lst[m, a, 1] -= cy
                     coords_lst[m, a, 2] -= cz
 
-            attempt_temp_swaps(M, replica_at, betas, energies_lst, attempt_count)
+            attempt_temp_swaps_njit(M, replica_at, betas, energies_lst, attempt_count)
             attempt_count += 1
 
             if i < adapt_cutoff:
-                gamma_n = 0.5 / ((attempt_count + 50) ** 0.6)
-                rho, temps_arr, betas = update_temp_ladder(
-                rho, energies_lst, replica_at, betas, T_min, T_max, k_b, gamma_n
+                gamma_n = gamma_scale / ((attempt_count + gamma_offset) ** gamma_decay)
+                rho, temps_arr, betas = update_temp_ladder_njit(
+                rho, energies_lst, replica_at, betas, T_min, T_max, gamma_n, rho_bounds
                 )
 
                 for j in range(M):
                     acc_rate = slot_accepted[j] / moves_per_window
-                    ld = log_deltas[j] + gamma_n * (acc_rate - 0.234)
+                    ld = log_deltas[j] + gamma_n * (acc_rate - target_accept_rate)
                     if ld < log_d_min:
                         ld = log_d_min
                     elif ld > log_d_max:
@@ -219,49 +228,90 @@ def _pt_loop_njit(
                 slot_accepted[j] = 0.0
         
         if quench_every is not None and (i + 1) % quench_every == 0:
-            for j in range(min(3, M)):
+            for j in range(min(quench_lowest_n, M)):
                 r = replica_at[j]
-                q_coords = local_optimisor(coords_lst[r].copy())
-                q_energy = float(cluster_potential(q_coords))
+                q_coords, q_energy, _, _ = local_optimisor_njit(coords_lst[r].copy(), potential_derivative_njit,
+                    potential_func_njit)
                 if q_energy < best_energy:
                     best_energy = q_energy
                     best_coords = q_coords
     print("Temperatures at end", temps_arr)
+    #Quench:
+    best_coords, best_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
     return best_energy, best_coords
 
 
-def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, swap_every, quench_every, N_sweeps, adapt_fraction, potential_func, local_optimisor_njit):
+def parallel_tempering_run(
+    start_coords,
+    start_energies,
+    M,
+    temps,
+    rho_bounds,
+    deltas,
+    d_min,
+    d_max,
+    R_c,
+    swap_every,
+    target_accept_rate,
+    gamma_scale,
+    gamma_offset,
+    gamma_decay,
+    quench_every,
+    quench_lowest_n,
+    N_sweeps,
+    adapt_fraction,
+    potential_func_njit,
+    potential_derivative_njit,
+    local_optimisor_njit,
+):
     """
     Runs a parallel tempering Monte Carlo simulation across M temperature replicas
     to search for the global minimum potential energy.
 
     :param start_coords: array_like, shape (M, N, 3),
         Initial 3D coordinates of N particles for each of the M replicas.
-    :param start_energies: array_like, shape (M),
+    :param start_energies: array_like, shape (M,),
         Initial potential energies corresponding to start_coords for each replica.
     :param M: int,
         Number of temperature replicas.
-    :param temps: array_like, shape (M),
-        Temperature ladder ordered from lowest to highest temperature.
-    :param deltas: array_like, shape (M),
+    :param temps: array_like, shape (M,),
+        Initial temperature ladder ordered strictly from lowest to highest temperature.
+    :param rho_bounds: tuple of (float, float),
+        Lower and upper bounds (rho_min, rho_max) on the log temperature spacings rho_t.
+    :param deltas: array_like, shape (M,),
         Initial maximum single-atom displacement for each MC step for each temperature slot.
+    :param d_min: float,
+        Minimum allowed single-atom displacement step size during adaptation.
+    :param d_max: float,
+        Maximum allowed single-atom displacement step size during adaptation.
     :param R_c: float,
-        Maximum radius of the cluster.
+        Maximum confining sphere radius of the cluster.
     :param swap_every: int,
-        Frequency at which adjacent temperature swaps are attempted.
+        Frequency (in sweeps) at which adjacent temperature swaps and adaptations are attempted.
+    :param target_accept_rate: float,
+        Target Monte Carlo step acceptance probability in (0, 1) for Robbins-Monro step-size adaptation.
+    :param gamma_scale: float,
+        Initial Robbins-Monro gain 'a' in gamma_n = a / (n + offset)^decay.
+    :param gamma_offset: float,
+        Stabilization offset 'n_0' in the Robbins-Monro step-size schedule.
+    :param gamma_decay: float,
+        Decay exponent 'kappa' in (0.5, 1.0] in the Robbins-Monro step-size schedule.
     :param quench_every: int or None,
-        Frequency at which low temperatures replicas are quenched to check what basin they are in. 
-        None if there should be no quenching attempts.
+        Frequency (in sweeps) at which low-temperature replicas are quenched via local optimization.
+        None disables periodic in-loop quenching.
+    :param quench_lowest_n: int,
+        Number of lowest-temperature slots to quench at each periodic quenching step.
     :param N_sweeps: int,
         Total number of Monte Carlo sweeps to perform per replica.
     :param adapt_fraction: float,
-        After N_sweeps*adapt_fraction the temperatures will no longer be updated dynamically. In some literature this is used 
-        to freeze the temperatures so that certain data reliant on fixed temperatures can be read after an initial 
-        adjustment phase of the system.
-    :param potential_func: callable,
-        Function to calculate the potential between two particles.
-    :param local_optimisor: callable,
-        Function to locally optimise the current state, for quenching.
+        Fraction in [0, 1] of N_sweeps during which temperatures and step sizes are adapted
+        before freezing for the remainder of the run.
+    :param potential_func_njit: callable,
+        Numba-compiled scalar pair potential function V(r).
+    :param potential_derivative_njit: callable,
+        Numba-compiled scalar pair potential derivative dV/dr.
+    :param local_optimisor_njit: callable,
+        Numba-compiled local optimizer used for quenching replicas.
     :returns: tuple of (float, np.ndarray)
         - best_energy -- Lowest potential energy found across all replicas during the simulation.
         - best_coords -- Coordinates corresponding to best_energy, shape (N, 3).
@@ -278,17 +328,88 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if not np.isfinite(R_c) or R_c <= 0:
         raise ValueError("R_c must be finite and positive")
 
+    # Validate d_min and d_max
+    if isinstance(d_min, (bool, np.bool_)) or not isinstance(d_min, (int, float, np.integer, np.floating)):
+        raise TypeError("d_min must be a numeric value")
+    if not np.isfinite(d_min) or d_min <= 0:
+        raise ValueError("d_min must be finite and positive")
+
+    if isinstance(d_max, (bool, np.bool_)) or not isinstance(d_max, (int, float, np.integer, np.floating)):
+        raise TypeError("d_max must be a numeric value")
+    if not np.isfinite(d_max) or d_max < d_min:
+        raise ValueError("d_max must be finite and greater than or equal to d_min")
+
     # Validate swap_every
     if isinstance(swap_every, (bool, np.bool_)) or not isinstance(swap_every, (int, np.integer)):
         raise TypeError("swap_every must be an integer")
     if swap_every <= 0:
         raise ValueError("swap_every must be a positive integer")
 
+    # Validate target_accept_rate
+    if isinstance(target_accept_rate, (bool, np.bool_)) or not isinstance(target_accept_rate, (int, float, np.integer, np.floating)):
+        raise TypeError("target_accept_rate must be a numeric value")
+    if not np.isfinite(target_accept_rate) or not (0.0 < target_accept_rate < 1.0):
+        raise ValueError("target_accept_rate must be strictly between 0 and 1")
+
+    # Validate Robbins-Monro parameters
+    if isinstance(gamma_scale, (bool, np.bool_)) or not isinstance(gamma_scale, (int, float, np.integer, np.floating)):
+        raise TypeError("gamma_scale must be a numeric value")
+    if not np.isfinite(gamma_scale) or gamma_scale <= 0:
+        raise ValueError("gamma_scale must be finite and positive")
+
+    if isinstance(gamma_offset, (bool, np.bool_)) or not isinstance(gamma_offset, (int, float, np.integer, np.floating)):
+        raise TypeError("gamma_offset must be a numeric value")
+    if not np.isfinite(gamma_offset) or gamma_offset < 0:
+        raise ValueError("gamma_offset must be finite and non-negative")
+
+    if isinstance(gamma_decay, (bool, np.bool_)) or not isinstance(gamma_decay, (int, float, np.integer, np.floating)):
+        raise TypeError("gamma_decay must be a numeric value")
+    if not np.isfinite(gamma_decay) or not (0.5 < gamma_decay <= 1.0):
+        raise ValueError("gamma_decay must be in the interval (0.5, 1.0]")
+
+    # Validate quench_every and quench_lowest_n
+    if quench_every is not None:
+        if isinstance(quench_every, (bool, np.bool_)) or not isinstance(quench_every, (int, np.integer)):
+            raise TypeError("quench_every must be an integer or None")
+        if quench_every <= 0:
+            raise ValueError("quench_every must be a positive integer")
+
+    if isinstance(quench_lowest_n, (bool, np.bool_)) or not isinstance(quench_lowest_n, (int, np.integer)):
+        raise TypeError("quench_lowest_n must be an integer")
+    if quench_lowest_n < 0:
+        raise ValueError("quench_lowest_n must be non-negative")
+
     # Validate N_sweeps
     if isinstance(N_sweeps, (bool, np.bool_)) or not isinstance(N_sweeps, (int, np.integer)):
         raise TypeError("N_sweeps must be an integer")
     if N_sweeps <= 0:
         raise ValueError("N_sweeps must be a positive integer")
+
+    # Validate adapt_fraction
+    if isinstance(adapt_fraction, (bool, np.bool_)) or not isinstance(adapt_fraction, (int, float, np.integer, np.floating)):
+        raise TypeError("adapt_fraction must be a numeric value")
+    if not np.isfinite(adapt_fraction) or not (0.0 <= adapt_fraction <= 1.0):
+        raise ValueError("adapt_fraction must be between 0.0 and 1.0 inclusive")
+
+    # Validate rho_bounds
+    if not isinstance(rho_bounds, (tuple, list)) or len(rho_bounds) != 2:
+        raise TypeError("rho_bounds must be a tuple or list of length 2")
+    rho_min, rho_max = rho_bounds
+    if isinstance(rho_min, (bool, np.bool_)) or not isinstance(rho_min, (int, float, np.integer, np.floating)):
+        raise TypeError("rho_bounds elements must be numeric values")
+    if isinstance(rho_max, (bool, np.bool_)) or not isinstance(rho_max, (int, float, np.integer, np.floating)):
+        raise TypeError("rho_bounds elements must be numeric values")
+    if not (np.isfinite(rho_min) and np.isfinite(rho_max)) or rho_min >= rho_max:
+        raise ValueError("rho_bounds must satisfy -inf < rho_min < rho_max < inf")
+    rho_bounds_tuple = (float(rho_min), float(rho_max))
+
+    # Validate callables
+    if not callable(potential_func_njit):
+        raise TypeError("potential_func_njit must be callable")
+    if not callable(potential_derivative_njit):
+        raise TypeError("potential_derivative_njit must be callable")
+    if not callable(local_optimisor_njit):
+        raise TypeError("local_optimisor_njit must be callable")
 
     # Validate temps
     temps_arr = np.asarray(temps)
@@ -334,21 +455,29 @@ def parallel_tempering_run(start_coords, start_energies, M, temps, deltas, R_c, 
     if not np.all(np.isfinite(energies_lst)):
         raise ValueError("start_energies must contain only finite values")
 
-
     best_energy, best_coords = _pt_loop_njit(
-            coords_lst,
-            energies_lst,
-            M,
-            temps_arr,
-            deltas_arr,
-            float(R_c),
-            swap_every,
-            quench_every,
-            N_sweeps,
-            potential_func,
-            local_optimisor,
-            adapt_fraction
-        )
+        coords_lst,
+        energies_lst,
+        int(M),
+        temps_arr,
+        rho_bounds_tuple,
+        deltas_arr,
+        float(d_min),
+        float(d_max),
+        float(R_c),
+        int(swap_every),
+        float(target_accept_rate),
+        float(gamma_scale),
+        float(gamma_offset),
+        float(gamma_decay),
+        None if quench_every is None else int(quench_every),
+        int(quench_lowest_n),
+        int(N_sweeps),
+        float(adapt_fraction),
+        potential_func_njit,
+        potential_derivative_njit,
+        local_optimisor_njit,
+    )
     return float(best_energy), best_coords
 
 
@@ -381,39 +510,36 @@ def make_start(N, M, R_c, cluster_pot_func):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    M = 10
-    N = 13
-    R_c = 3.0
-    swap_every = 3
-    quench_every = None
-    N_sweeps = 50000
-    temps = np.geomspace(0.04, 0.48, M)
-    deltas = make_deltas(temps, 0.08, temps[0])
-    energies, coords = make_start(N, M, R_c, cluster_potential)
-    adapt_fraction = 1.0
+    N = 13                                                  # Number of atoms in the cluster 
+    M = max(6, int(round(3.0 * np.sqrt(N))))                # Number of replicas; scales as ~3*sqrt(N) to keep adjacent energy overlap constant
+    R_c = round(1.3 * (N ** (1.0 / 3.0)), 2)                # Confining sphere radius (~1.3 * N^(1/3)): prevents evaporation without pinning surface atoms
+    swap_every = 3                                          # Sweeps between swap attempts, should be usually between 1 and 20
+    quench_every = 40 * N                                   # Sweeps between periodic L-BFGS quenches (~30*N to 50*N so quenching stays cheap). 
+    quench_lowest_n = max(2, int(round(0.35 * M)))          # Lowest temperature slots to quench (~30-40% of M, targeting replicas near/below melting)
+    N_sweeps = 300 * (N ** 2)                               # Total MC sweeps per replica (~N^2 for easy icosahedral sizes; increase 5-10x for multi-funnel N=38, 75)
+    temps = np.geomspace(0.04, 0.50, M)                     # Initial geometric ladder: T_min in deep solid (0.02-0.05), T_max above melting (~0.45-0.60)
+    deltas = make_deltas(temps, 0.08, temps[0])             # Initial max displacements scaled via equipartition d_ref * sqrt(T / T_min), with d_ref ~ 0.05-0.10
+    d_min = 1e-4                                            # Lower bound on MC step size to prevent collapse if trapped at T_min
+    d_max = R_c                                             # Upper bound on MC step size (moves larger than R_c always hit the confining wall)
+    energies, coords = make_start(N, M, R_c, cluster_potential)  # Initial non-overlapping random cluster configurations and energies inside R_c - 0.5
+    adapt_fraction = 1.0                                    # Fraction of sweeps with active temperature adaptation (1.0 for global optimization; 0.2-0.5 if sampling equilibrium)
+
+    rho_bounds = (-10.0, 10.0)                                # Min/max bounds on log temperature spacings rho_t to prevent ladder collapse, (-10, 10) is pretty much always fine
+    target_accept_rate = 0.234                              # Optimal multi-dimensional random-walk Metropolis acceptance rate (Roberts-Gelman-Gilks). 0.234 is found from literature.
+    gamma_scale = 0.5                                       # Initial Robbins-Monro gain 'a' in gamma_n = a / (n + offset)^decay, gamma_n is the step size for the temperature updates.
+    gamma_offset = 50.0                                     # Robbins-Monro offset to damp noisy early ladder/step-size jumps
+    gamma_decay = 0.6                                       # Robbins-Monro decay exponent in (0.5, 1.0] guaranteeing asymptotic convergence
 
     t_start = time.perf_counter()
     best_e, best_c = parallel_tempering_run(
-        coords, energies, M, temps, deltas, R_c, swap_every, quench_every, N_sweeps, adapt_fraction, lennard_jones_potential_njit, None
+        coords, energies, M, temps, rho_bounds, deltas, d_min, d_max, R_c, 
+        swap_every, target_accept_rate, gamma_scale, gamma_offset, gamma_decay, 
+        quench_every, quench_lowest_n, N_sweeps, adapt_fraction, 
+        lennard_jones_potential_njit, lennard_jones_derivative_njit, lbfgs_njit
     )
     t_end = time.perf_counter()
 
     print(f"PT runtime: {t_end - t_start:.4f} s")
-
-    best_c_q = FIRE(
-        best_c,
-        lennard_jones_derivative,
-        Nmax=20_000,
-        Nmin=5,
-        f_inc=1.1,
-        f_dec=0.5,
-        alpha0=0.1,
-        f_alpha=0.99,
-        err_tol=1e-5,
-        dt=0.002,
-        max_step=0.05,
-    )
-    best_e_q = cluster_potential(best_c_q)
-    print("Quenched global energy minimum:", best_e_q, "for:", N, "atoms.")
-    highscores(best_c_q, "parallel_tempering", "LJ", (1, 1), "First attempt of PT using numba")
-    plot_cluster(best_c_q)
+    print("Quenched global energy minimum:", best_e, "for:", N, "atoms.")
+    highscores(best_c, "parallel_tempering", "LJ", (1, 1), "First attempt of PT using numba")
+    plot_cluster(best_c)
