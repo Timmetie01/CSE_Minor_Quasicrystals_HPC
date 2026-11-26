@@ -11,7 +11,12 @@ from src.main_code.global_optimizers import basin_hopping as bh
 from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.metrics import (accuracy_score, average_precision_score, roc_auc_score, classification_report,confusion_matrix)
 
-
+OPTIMAL_DELTAS = {
+    10: 1.6,
+    20: 1.8,
+    30: 1.8,
+    50: 1.9
+}
 
 FEATURE_NAMES = [
     "pert_energy_change",
@@ -458,7 +463,7 @@ def create_observation(
 
 def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = pot.lennard_jones_potential,
                       local_optimizer_wrapper: Callable = LBFGS, beta: float =1.0, max_iter: int = 3000,
-                      perturbation_type: str = "random", delta: float = 1.6, record_run : bool = False,
+                      perturbation_type: str = "random", delta: float = 1.8, record_run : bool = False,
                       run_id: int | None = None) -> tuple[np.ndarray, float, int, int] | tuple[np.ndarray, float, int, int, list[dict]]:
     
     '''
@@ -485,7 +490,7 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = p
         Method used to perturb the cluster. Default is "random".
     :param delta: float, optional
         Maximum displacement in each Cartesian direction for random perturbations.
-        Must be finite and positive. Default is 1.6
+        Must be finite and positive. Default is 1.8
     :param record_run: bool, optional
         Whether to record an observation for every attempted perturbation,
         including accepted and rejected moves. Default is False.
@@ -616,14 +621,14 @@ def basin_hopping_opt(input_coords: np.ndarray, potential_function: Callable = p
     return best_coords, best_energy, n_iter, n_accepted
 
 
-def random_perturbation(coords: np.ndarray, delta: float = 1.6) -> np.ndarray:
+def random_perturbation(coords: np.ndarray, delta: float = 1.8) -> np.ndarray:
     '''
     Randomly perturbs the position of a single particle in a cluster.
 
     :param coords: array_like, shape (N, 3)
         Coordinates of N particles in 3D space.
     :param delta: float
-        Maximum displacement in each Cartesian direction. default is 1.6
+        Maximum displacement in each Cartesian direction. default is 1.8
     :returns: ndarray, shape (N, 3)
         Perturbed coordinates of the cluster. Original coordinates are unchanged.
     '''
@@ -739,7 +744,7 @@ def generate_data(n_atoms : int, n_bh_runs : int = 10, n_bh_iter : int = 500, ou
             local_optimizer_wrapper=local_optimizer,
             beta=1.0,
             max_iter=n_bh_iter,
-            delta=1.6,
+            delta=1.8,
             record_run=True,
             run_id= i
         )
@@ -818,11 +823,11 @@ def train_rf_model(n_atoms : int, n_bh_runs : int = 20, n_bh_iter : int = 1000, 
     return model, X_test, y_test, X_train, y_train
 
 
-def basin_hopping_record_standards(
+def bh_rec_std_clusters(
     input_coords: np.ndarray,
     local_optimizer_wrapper: Callable = LBFGS,
     beta: float = 1.0,
-    delta: float = 1.6,
+    delta: float = 1.8,
     tolerance: float = 1e-5
 ) -> tuple[np.ndarray, float, int, int, float]:
 
@@ -844,7 +849,7 @@ def basin_hopping_record_standards(
         Default is 1.0.
     :param delta: float
         Maximum displacement in each Cartesian direction.
-        Default is 1.6.
+        Default is 1.8.
     :param tolerance: float
         Maximum absolute energy difference from the reference global
         minimum for convergence. Default is 1e-5.
@@ -961,7 +966,7 @@ def benchmark_bh(n_atoms: int, k: int = 40):
 
     for i in range(k):
 
-        seed = n_atoms * 1000 + i
+        seed = n_atoms * 1000 * k + i
         np.random.seed(seed)
 
         initial_coords = random_cluster(
@@ -973,7 +978,7 @@ def benchmark_bh(n_atoms: int, k: int = 40):
         )
 
         best_coords, best_energy, n_iter, n_accepted, total_time = (
-            basin_hopping_record_standards(
+            bh_rec_std_clusters(
                 input_coords=initial_coords,
                 local_optimizer_wrapper=lambda coords: LBFGS(
                     coords,
@@ -981,7 +986,7 @@ def benchmark_bh(n_atoms: int, k: int = 40):
                     print_convergence=False
                 ),
                 beta=1.0,
-                delta=1.6
+                delta=1.8
             )
         )
 
@@ -1036,7 +1041,7 @@ def benchmark_bh(n_atoms: int, k: int = 40):
 
 def find_optimal_delta(n_atoms: int, k: int = 40) -> float:
 
-    delta_values = [1.8, 1.9, 2.0, 2.1, 2.2, 2.3]
+    delta_values = [ 1.6, 1.7, 1.8, 1.9, 2.0, 2.1]
 
     best_delta = None
     best_time = float("inf")
@@ -1065,13 +1070,14 @@ def find_optimal_delta(n_atoms: int, k: int = 40) -> float:
                 seed=seed
             )
 
-            _, _, _, _, total_time = basin_hopping_record_standards(
+            _, _, _, _, total_time = bh_rec_std_clusters(
                 input_coords=initial_coords,
                 local_optimizer_wrapper=local_optimizer,
                 beta=1.0,
                 delta=delta
             )
-            print(f"run {i} done for delta = {delta}")
+
+            print(f"run {i} done for delta = {delta}, with time = {total_time}")
             run_times.append(total_time)
 
         median_time = np.median(run_times)
@@ -1086,9 +1092,9 @@ def find_optimal_delta(n_atoms: int, k: int = 40) -> float:
 
 if __name__ == "__main__":
     # to do: 
-    # 1. find optimal delta functin
-    # 2. incorporate into basin hopping -> random perturbation
-    # 3. redo timing plots and dataset. 
+
+
+
     # 4. based on timing dataset, use average n_iter to reach minimum 
     #    to create a policy for basin hopping data creation runs. 
     #    We cant spend too much time on creating data because we then 
@@ -1096,11 +1102,10 @@ if __name__ == "__main__":
     # 5. After creating dataset, train first rf model. Look into parameter tuning
     # 6. Try XGBoost and parameter tuning.
     # 7. Look in to SHAP
+    generate_data(30, 10, 1500)
 
 
-    optimal_delta = find_optimal_delta(30, k=50)
-
-    print(optimal_delta)
+    
 
 
 
