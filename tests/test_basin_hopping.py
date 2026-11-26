@@ -2,10 +2,7 @@ import numpy as np
 import pytest
 from src.main_code.global_optimizers import basin_hopping as bh
 from src.main_code import potentials_calculations as pot
-from src.main_code.local_optimizers.fire import FIRE
-
-def local_minimization_wrapper(coords: np.ndarray) -> np.ndarray:
-    return FIRE(coords, pot.lennard_jones_derivative)
+from src.main_code.local_optimizers.bfgs import LBFGS
 
 def test_basin_hopping_finds_lj4_global_minimum():
     np.random.seed(13)
@@ -16,13 +13,13 @@ def test_basin_hopping_finds_lj4_global_minimum():
 
     # Parameters for BH
     beta = 1.0
-    max_iter = 100
-    delta = 0.5
+    max_iter = 1000
+    delta = 1
 
-    optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping(
+    optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping_opt(
         input_coords=initial_coords,
         potential_function=pot.lennard_jones_potential,
-        local_optimizer_wrapper=local_minimization_wrapper,
+        local_optimizer=LBFGS,
         beta=beta,
         max_iter=max_iter,
         perturbation_type="random",
@@ -47,22 +44,22 @@ def test_basin_hopping_invalid_parameters():
 
     # Test invalid beta
     with pytest.raises(ValueError):
-        bh.basin_hopping(initial_coords, pot.lennard_jones_potential, local_minimization_wrapper,
+        bh.basin_hopping_opt(initial_coords, pot.lennard_jones_potential, LBFGS,
                          beta=-1.0, max_iter=10)
 
     # Test invalid max_iter
     with pytest.raises(ValueError):
-        bh.basin_hopping(initial_coords, pot.lennard_jones_potential, local_minimization_wrapper,
+        bh.basin_hopping_opt(initial_coords, pot.lennard_jones_potential, LBFGS,
                          beta=1.0, max_iter=0)
 
     # Test unsupported perturbation type
     with pytest.raises(ValueError):
-        bh.basin_hopping(initial_coords, pot.lennard_jones_potential, local_minimization_wrapper,
+        bh.basin_hopping_opt(initial_coords, pot.lennard_jones_potential, LBFGS,
                          beta=1.0, max_iter=10, perturbation_type="unsupported")
 
     # Test missing delta for random perturbation
     with pytest.raises(ValueError):
-        bh.basin_hopping(initial_coords, pot.lennard_jones_potential, local_minimization_wrapper,
+        bh.basin_hopping_opt(initial_coords, pot.lennard_jones_potential, LBFGS,
                          beta=1.0, max_iter=10, perturbation_type="random", delta=None)
     
 def test_basin_hopping_escape_local_minima_lj7_cluster():
@@ -76,19 +73,19 @@ def test_basin_hopping_escape_local_minima_lj7_cluster():
                               [0.0, 0.0, -a],
                               [a, a, a]])
     
-    local_min_coords = local_minimization_wrapper(initial_coords)
+    local_min_coords = LBFGS(initial_coords)
     local_min_energy = pot.cluster_potential(local_min_coords, pot.lennard_jones_potential)
 
 
     #parameters for BH
     beta = 1.0
     max_iter = 1000
-    delta = 0.5
+    delta = 1
 
-    optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping(
+    optimized_coords, optimized_energy, iterations, accepted_moves = bh.basin_hopping_opt(
         input_coords=local_min_coords,
         potential_function=pot.lennard_jones_potential,
-        local_optimizer_wrapper=local_minimization_wrapper,
+        local_optimizer=LBFGS,
         beta=beta,
         max_iter=max_iter,
         perturbation_type="random",
