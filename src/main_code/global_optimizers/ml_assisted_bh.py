@@ -762,7 +762,17 @@ def generate_data(n_atoms : int, n_bh_runs : int = 10, n_bh_iter : int = 500, ou
 
 
 
-def train_rf_model(n_atoms : int, n_bh_runs : int = 20, n_bh_iter : int = 1000, data_file_path : str = "data/records/LJ/1.0_1.0/methods/ml_assisted_bh"):
+def train_rf_model(
+    n_atoms: int,
+    n_bh_runs: int,
+    n_bh_iter: int,
+    data_file_path: str = "data/records/LJ/1.0_1.0/methods/ml_assisted_bh",
+    n_estimators: int = 200,
+    min_samples_leaf: int = 5,
+    random_state: int = 42,
+    n_jobs: int = -1
+):
+    
     if(data_file_path == "data/records/LJ/1.0_1.0/methods/ml_assisted_bh"):
         folder_path = Path(data_file_path)
         file_path = folder_path / f"ml_bh_{n_atoms}atoms_{n_bh_runs}runs_{n_bh_iter}iter.csv"
@@ -812,10 +822,10 @@ def train_rf_model(n_atoms : int, n_bh_runs : int = 20, n_bh_iter : int = 1000, 
 
     # Train Random Forest
     model = RandomForestClassifier(
-        n_estimators=200,
-        min_samples_leaf=5,
-        random_state=42,
-        n_jobs=-1
+        n_estimators=n_estimators,
+        min_samples_leaf=min_samples_leaf,
+        random_state=random_state,
+        n_jobs=n_jobs
     )
 
     model.fit(X_train, y_train)
@@ -1090,6 +1100,90 @@ def find_optimal_delta(n_atoms: int, k: int = 40) -> float:
 
     return best_delta
 
+
+def analyse_rf_model(
+    model,
+    X_test,
+    Y_test,
+    X_train,
+    n_atoms: int,
+    n_bh_runs: int,
+    n_bh_iter: int,
+    data_folder_path: str = "data/records/LJ/1.0_1.0/methods/ml_assisted_bh"
+):
+
+    # Create output directories
+    base_dir = Path(data_folder_path)
+
+    importance_dir = base_dir / "feature_importance"
+    probability_dir = base_dir / "pred_prob_vs_realised"
+
+    importance_dir.mkdir(parents=True, exist_ok=True)
+    probability_dir.mkdir(parents=True, exist_ok=True)
+
+    file_name = f"{n_atoms}atoms_{n_bh_runs}runs_{n_bh_iter}iter"
+
+    # Predicted probabilities vs realised outcomes
+    y_prob = model.predict_proba(X_test)[:, 1]
+
+    results = pd.DataFrame({
+        "predicted_probability": y_prob,
+        "actual_outcome": Y_test.to_numpy()
+    })
+
+    results = results.sort_values(
+        by="predicted_probability",
+        ascending=False
+    )
+
+    results.to_csv(
+        probability_dir / f"{file_name}.csv",
+        index=False
+    )
+
+    # Feature importance
+    feature_importance = pd.DataFrame({
+        "feature": X_train.columns,
+        "importance": model.feature_importances_
+    })
+
+    feature_importance = feature_importance.sort_values(
+        by="importance",
+        ascending=False
+    )
+
+    feature_importance.to_csv(
+        importance_dir / f"{file_name}.csv",
+        index=False
+    )
+
+    # Feature importance plot
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    ax.barh(
+        feature_importance["feature"],
+        feature_importance["importance"],
+        color="steelblue"
+    )
+
+    ax.invert_yaxis()
+    ax.set_xlabel("Feature importance")
+    ax.set_ylabel("Feature")
+    ax.set_title(
+        f"LJ{n_atoms} - Random Forest Feature Importance"
+    )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        importance_dir / f"{file_name}.png",
+        dpi=300
+    )
+
+    plt.close(fig)
+
+    print(f"LJ{n_atoms}: Model analysis saved.")
+
 if __name__ == "__main__":
     # to do: 
 
@@ -1102,7 +1196,11 @@ if __name__ == "__main__":
     # 5. After creating dataset, train first rf model. Look into parameter tuning
     # 6. Try XGBoost and parameter tuning.
     # 7. Look in to SHAP
-    generate_data(30, 10, 1500)
+    rf_model_30, X_test, Y_test, X_train, Y_train = train_rf_model(30, 10, 1500)
+    analyse_rf_model(rf_model_30, X_test, Y_test, X_train, 30, 10, 1500)
+
+
+
 
 
     
