@@ -1,36 +1,29 @@
 import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
-from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, oscillating_pair_potential, oscillating_pair_derivative, cluster_potential
+from src.main_code.potentials_calculations import lennard_jones_potential, lennard_jones_derivative, oscillating_pair_potential, oscillating_pair_derivative, make_tapered_oscillating_pair_potential, make_tapered_oscillating_pair_derivative, cluster_potential
 from src.main_code.local_optimizers.fire import FIRE
 from data.data_handling import read_LJwales_data, read_database, ALLOWED_POTENTIALS
 
-def plot_potential(epsilon=1, sigma=1, frequency=1, phase_shift=0):
-    '''
-    Plots the Lennard-Jones and Oscillating Pair potentials. Yet to implement cutoff-OP.
-
-    :param float epsilon:
-        The parameter 'epsilon' for the Lennard-Jones potential, representing well-depth
-    :param float sigma:
-            The parameter 'sigma' for the Lennard-Jones potential, representing the distance at which the potential is zero
-    :param float frequency:
-            The parameter 'frequency' for the Oscillating Pair potential, representing at which frequency the cosine term changes over r.
-    :param float phase_shift:
-            The parameter 'phase_shift' for the Oscillating Pair potential, representing the phase-shift in the cosine term.
-    '''
+def plot_potential(epsilon=1, sigma=1, frequency=6, phase_shift=0.59):
     r = np.arange(0.01, 6, 0.001)
     lj_arr = lennard_jones_potential(r, epsilon, sigma)
     op_arr = oscillating_pair_potential(r, frequency, phase_shift)
+    sopp = make_tapered_oscillating_pair_potential(frequency, phase_shift)
+    sopd = make_tapered_oscillating_pair_derivative(frequency, phase_shift)
+    op_arr_3wells = sopp(r)
+    op_arr_3wells_deriv = sopd(r)
     plt.plot(r, lj_arr, color='darkblue', label='Lennard-Jones')
     plt.plot(r, op_arr, color='firebrick', label='Oscillating Pair')
+    plt.plot(r, op_arr_3wells, color='darkgreen', label='Smooth Oscillating Pair', linestyle='--')
+    #plt.plot(r, op_arr_3wells_deriv, color='firebrick', label='Smooth Oscillating Pair Derivative', linestyle='--')
     plt.ylabel("Potential (Dead Racoons)")
     plt.xlabel("Distance (??)")
     plt.grid(ls='--')
     plt.legend()
     plt.title('Potential (r)')
-    plt.ylim(np.min(np.array([lj_arr,op_arr])) * 1.2, np.min(np.array([lj_arr,op_arr])) * -1.5)
+    plt.ylim(np.min(np.array([lj_arr,op_arr,op_arr_3wells])) * 1.2, np.min(np.array([lj_arr,op_arr,op_arr_3wells])) * -2.0)
     plt.show()
-
 
 def plot_FIRE_convergence(coords_init, potential_func=lennard_jones_potential, potential_derivative=lennard_jones_derivative, showplot=True):
     """
@@ -283,3 +276,5 @@ if __name__ == "__main__":
     plot_from_database(5)
     plot_from_database(13)
     plot_from_database(50)
+
+    plot_potential(1/4, 1, 7.5, 0.59)
