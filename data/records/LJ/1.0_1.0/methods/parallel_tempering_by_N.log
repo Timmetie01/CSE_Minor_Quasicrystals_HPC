@@ -2,7 +2,7 @@
 
 25-11-2026 12:10:38  | N=   3 | LJ_1.0_1.0         | E =      -2.9994773476 | method = parallel_tempering   |                           | FIRST ATTEMPT (METHOD) | 
 
-26-11-2026 14:34:08  | N=   5 | LJ_1.0_1.0         | E =      -9.0927611793 | method = parallel_tempering   | prev =      -9.0904807753 |      METHOD BEST       | 
+27-11-2026 14:54:43  | N=   5 | LJ_1.0_1.0         | E =      -9.0931989811 | method = parallel_tempering   | prev =      -9.0927611793 |      METHOD BEST       | 
 
 
 
@@ -17,7 +17,7 @@
 
 
 
-25-11-2026 16:02:45  | N=  20 | LJ_1.0_1.0         | E =     -75.4804265297 | method = parallel_tempering   | prev =     -72.7850639124 |      METHOD BEST       | 
+27-11-2026 15:12:46  | N=  20 | LJ_1.0_1.0         | E =     -76.7378860673 | method = parallel_tempering   | prev =     -76.7150087410 |      METHOD BEST       | 
 
 
 

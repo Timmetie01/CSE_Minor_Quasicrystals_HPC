@@ -3,3 +3,48 @@
 
 
 26-11-2026 14:30:53  | N=   5 | LJ_1.0_1.0         | E =      -9.1038524157 | method = parallel_tempering_numba |                           | FIRST ATTEMPT (METHOD) | 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+27-11-2026 15:02:58  | N=  20 | LJ_1.0_1.0         | E =     -77.1770425683 | method = parallel_tempering_numba |                           | FIRST ATTEMPT (METHOD) | 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+27-11-2026 16:27:17  | N=  50 | LJ_1.0_1.0         | E =    -244.5499263274 | method = parallel_tempering_numba |                           | FIRST ATTEMPT (METHOD) | 

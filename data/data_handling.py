@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 from src.main_code.potentials_calculations import cluster_potential, make_lennard_jones_potential, make_oscillating_pair_potential
+import signal
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
@@ -92,6 +93,23 @@ def update_atom_count_log(log_path: str, atom_count: int, line: str):
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
+class DeferredKeyboardInterrupt:
+    """Delays KeyboardInterrupt (SIGINT) until the writing block of the highscores function is finished.
+    Ensures database integrity if the user uses keyboard-interrupts halfway through writing. """
+    def __enter__(self):
+        self.signal_received = False
+        self.old_handler = signal.getsignal(signal.SIGINT)
+
+        def handler(sig, frame):
+            self.signal_received = (sig, frame)
+            print("\nKeyboardInterrupt received — finishing saving records before exiting...")
+
+        signal.signal(signal.SIGINT, handler)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signal.signal(signal.SIGINT, self.old_handler)
+        if self.signal_received and callable(self.old_handler):
+            self.old_handler(*self.signal_received)
 
 def highscores(
     new_data: np.ndarray,
@@ -116,7 +134,7 @@ def highscores(
         A string of extra information that will be written at the end of the line inthe log files. Including things like execution time, the local optimizer used, other parameters etc.
     :param float, default=1e-12 tol:
         The difference by which a new minimum must beat an old minimum to be counted. To avoid floating-point error playing a significant role.
-    :return tuple \(bool, bool, bool, bool\):
+    :return tuple (bool, bool, bool, bool):
         In the following order: (global record broken, method's record broken, first overall try, first method's try, Wales record broken)
     '''
 
@@ -165,74 +183,77 @@ def highscores(
     broke_overall = (prev_overall_energy is None) or (new_energy < prev_overall_energy - tol)
     broke_wales = False
 
-    #If it is the first time running this set of parameters with the potential, all directories need to be made
-    if first_ever_overall:
-        os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
-        os.makedirs(os.path.dirname(method_npy), exist_ok=True)
-        np.save(overall_npy, coords)
-        np.save(method_npy, coords)
-
-        print(f"We have our first attempt for the current configuration, so kinda a record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
-        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT':^22} | {extra_info}"
-        append_log(overall_chrono_log, line)
-        update_atom_count_log(overall_by_n_log, n_atoms, line)
-        append_log(method_chrono_log, line)
-        update_atom_count_log(method_by_n_log, n_atoms, line)
-
-    #If it is the first time this method tries these parameters, only the methods directories need to be created
-    elif first_ever_method:
-        os.makedirs(os.path.dirname(method_npy), exist_ok=True)
-        np.save(method_npy, coords)
-
-        print(f"We have our first attempt for the current method, so kinda a method record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
-        line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT (METHOD)':^22} | {extra_info}"
-        append_log(method_chrono_log, line)
-        update_atom_count_log(method_by_n_log, n_atoms, line)
-
-        if broke_overall:
+    #If an KeyboardInterrupt is called during the writing it will be delayed until all writing is finished,
+    # to guarantee database integrity and log-vs-npy file parity.
+    with DeferredKeyboardInterrupt():
+        #If it is the first time running this set of parameters with the potential, all directories need to be made
+        if first_ever_overall:
             os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
+            os.makedirs(os.path.dirname(method_npy), exist_ok=True)
             np.save(overall_npy, coords)
-            print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
-            prev_str = f"prev = {prev_overall_energy:18.10f}"
-            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
-            append_log(overall_chrono_log, overall_line)
-            update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
+            np.save(method_npy, coords)
 
-    #Otherwise no directories need to be made
-    else:
-        if broke_method:
+            print(f"We have our first attempt for the current configuration, so kinda a record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
+            line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT':^22} | {extra_info}"
+            append_log(overall_chrono_log, line)
+            update_atom_count_log(overall_by_n_log, n_atoms, line)
+            append_log(method_chrono_log, line)
+            update_atom_count_log(method_by_n_log, n_atoms, line)
+
+        #If it is the first time this method tries these parameters, only the methods directories need to be created
+        elif first_ever_method:
             os.makedirs(os.path.dirname(method_npy), exist_ok=True)
             np.save(method_npy, coords)
-            print(f"We broke our own record with this method ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_method_energy:.8f})")
-            prev_str = f"prev = {prev_method_energy:18.10f}"
-            method_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'METHOD BEST':^22} | {extra_info}"
-            append_log(method_chrono_log, method_line)
-            update_atom_count_log(method_by_n_log, n_atoms, method_line)
 
-        if broke_overall:
-            os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
-            np.save(overall_npy, coords)
-            print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
-            prev_str = f"prev = {prev_overall_energy:18.10f}"
-            overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
-            append_log(overall_chrono_log, overall_line)
-            update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
+            print(f"We have our first attempt for the current method, so kinda a method record (N={n_atoms}, {potential_tag}_{param_tag}, {method_str}): E = {new_energy:.10f}")
+            line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {'':25} | {'FIRST ATTEMPT (METHOD)':^22} | {extra_info}"
+            append_log(method_chrono_log, line)
+            update_atom_count_log(method_by_n_log, n_atoms, line)
 
-    if potential_str.upper() == "LJ" and n_atoms <= 150 and potential_parameters == (1, 1):
-        wales_coords = read_LJwales_data(n_atoms)
-        wales_energy = float(cluster_potential(wales_coords, pot_func))
-        broke_wales = new_energy < wales_energy - tol
+            if broke_overall:
+                os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
+                np.save(overall_npy, coords)
+                print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
+                prev_str = f"prev = {prev_overall_energy:18.10f}"
+                overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
+                append_log(overall_chrono_log, overall_line)
+                update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
 
-        if broke_wales:
-            print(f"We broke the Wales datasets record!!!!!! (Wales LJ N={n_atoms}, {method_str}): E = {new_energy:.10f} < {wales_energy:.10f}")
-            wales_str = f"wales = {wales_energy:17.10f}"
-            wales_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {wales_str:<25} | {'BEAT WALES':^22} | {extra_info}"
-            append_log(overall_chrono_log, wales_line)
-            update_atom_count_log(overall_by_n_log, n_atoms, wales_line)
-            append_log(method_chrono_log, wales_line)
-            update_atom_count_log(method_by_n_log, n_atoms, wales_line)
+        #Otherwise no directories need to be made
+        else:
+            if broke_method:
+                os.makedirs(os.path.dirname(method_npy), exist_ok=True)
+                np.save(method_npy, coords)
+                print(f"We broke our own record with this method ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_method_energy:.8f})")
+                prev_str = f"prev = {prev_method_energy:18.10f}"
+                method_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'METHOD BEST':^22} | {extra_info}"
+                append_log(method_chrono_log, method_line)
+                update_atom_count_log(method_by_n_log, n_atoms, method_line)
 
-    return broke_overall, broke_method, first_ever_overall, first_ever_method, broke_wales
+            if broke_overall:
+                os.makedirs(os.path.dirname(overall_npy), exist_ok=True)
+                np.save(overall_npy, coords)
+                print(f"We broke our own overall record!! ({method_str}, N={n_atoms}): E = {new_energy:.10f} (prev: {prev_overall_energy:.8f})")
+                prev_str = f"prev = {prev_overall_energy:18.10f}"
+                overall_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {prev_str:<25} | {'OVERALL BEST':^22} | {extra_info}"
+                append_log(overall_chrono_log, overall_line)
+                update_atom_count_log(overall_by_n_log, n_atoms, overall_line)
+
+        if potential_str.upper() == "LJ" and n_atoms <= 150 and potential_parameters == (1, 1):
+            wales_coords = read_LJwales_data(n_atoms)
+            wales_energy = float(cluster_potential(wales_coords, pot_func))
+            broke_wales = new_energy < wales_energy - tol
+
+            if broke_wales:
+                print(f"We broke the Wales datasets record!!!!!! (Wales LJ N={n_atoms}, {method_str}): E = {new_energy:.10f} < {wales_energy:.10f}")
+                wales_str = f"wales = {wales_energy:17.10f}"
+                wales_line = f"{current_time:^20} | N={n_atoms:4d} | {potential_tag}_{param_tag:<15} | E = {new_energy:18.10f} | method = {method_str:<20} | {wales_str:<25} | {'BEAT WALES':^22} | {extra_info}"
+                append_log(overall_chrono_log, wales_line)
+                update_atom_count_log(overall_by_n_log, n_atoms, wales_line)
+                append_log(method_chrono_log, wales_line)
+                update_atom_count_log(method_by_n_log, n_atoms, wales_line)
+
+        return broke_overall, broke_method, first_ever_overall, first_ever_method, broke_wales
 
 
 def read_database(n_atoms, potential_str, potential_parameters, method_str=None):

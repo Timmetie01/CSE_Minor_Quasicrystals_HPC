@@ -17,4 +17,34 @@
 
 
 
-25-11-2026 16:00:13  | N=  20 | LJ_1.0_1.0         | E =     -75.2293535107 | method = simulated_annealing  |                           | FIRST ATTEMPT (METHOD) | 
+27-11-2026 16:14:01  | N=  20 | LJ_1.0_1.0         | E =     -77.1770425683 | method = simulated_annealing  | prev =     -76.2101454057 |      METHOD BEST       | 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+27-11-2026 16:44:24  | N=  50 | LJ_1.0_1.0         | E =    -238.2869105200 | method = simulated_annealing  | prev =    -237.6109601779 |      METHOD BEST       | 

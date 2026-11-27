@@ -246,7 +246,7 @@ def _pt_loop_njit(
             _check_interrupt()
             pct = int(round(100.0 * (i + 1) / N_sweeps))
             print("Progress:", pct, "% | Sweep:", i + 1, "/", N_sweeps, "| Best energy:", best_energy, "| Wales LJ energy:", wales_energy)
-    print("Temperatures at end", temps_arr)
+    #print("Temperatures at end", temps_arr)
     #Quench:
     final_coords, final_energy, _, _ = local_optimisor_njit(best_coords, potential_derivative_njit, potential_func_njit)
     if final_energy < best_energy:

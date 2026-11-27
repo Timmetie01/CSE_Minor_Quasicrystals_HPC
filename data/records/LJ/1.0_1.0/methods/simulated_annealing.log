@@ -2,3 +2,9 @@
 25-11-2026 12:10:39  | N=   3 | LJ_1.0_1.0         | E =      -3.0000000000 | method = simulated_annealing  |                           | FIRST ATTEMPT (METHOD) | 
 25-11-2026 16:00:13  | N=  20 | LJ_1.0_1.0         | E =     -75.2293535107 | method = simulated_annealing  |                           | FIRST ATTEMPT (METHOD) | 
 26-11-2026 14:30:56  | N=   5 | LJ_1.0_1.0         | E =      -9.1038524157 | method = simulated_annealing  |                           | FIRST ATTEMPT (METHOD) | 
+27-11-2026 16:12:02  | N=  20 | LJ_1.0_1.0         | E =     -75.3320730198 | method = simulated_annealing  | prev =     -75.2293535107 |      METHOD BEST       | 
+27-11-2026 16:12:33  | N=  20 | LJ_1.0_1.0         | E =     -76.2101454057 | method = simulated_annealing  | prev =     -75.3320730198 |      METHOD BEST       | 
+27-11-2026 16:14:01  | N=  20 | LJ_1.0_1.0         | E =     -77.1770425683 | method = simulated_annealing  | prev =     -76.2101454057 |      METHOD BEST       | 
+27-11-2026 16:27:54  | N=  50 | LJ_1.0_1.0         | E =    -237.4215566037 | method = simulated_annealing  |                           | FIRST ATTEMPT (METHOD) | 
+27-11-2026 16:37:42  | N=  50 | LJ_1.0_1.0         | E =    -237.6109601779 | method = simulated_annealing  | prev =    -237.4215566037 |      METHOD BEST       | 
+27-11-2026 16:44:24  | N=  50 | LJ_1.0_1.0         | E =    -238.2869105200 | method = simulated_annealing  | prev =    -237.6109601779 |      METHOD BEST       | 

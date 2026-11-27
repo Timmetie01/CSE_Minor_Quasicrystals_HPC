@@ -243,12 +243,13 @@ class Optimizer:
     # Internal Functions
 
     def _resolve_local_func(self, local_optimizer: str | Callable) -> Callable:
-        """Resolve string names ('FIRE', 'BFGS', 'LBFGS') to module functions."""
+        """Resolve string names ('FIRE', 'BFGS', 'LBFGS', 'lbfgs_njit') to module functions."""
         if isinstance(local_optimizer, str):
             mapping = {
                 "fire": fire.FIRE,
                 "bfgs": bfgs.BFGS,
                 "lbfgs": bfgs.LBFGS,
+                "lbfgs_njit": bfgs.lbfgs_njit
             }
             key = local_optimizer.lower()
             if key not in mapping:
@@ -276,6 +277,9 @@ class Optimizer:
             return lambda coords: func(
                 coords, self.potential_derivative, self.potential_func, **kwargs
             )
+        elif func in (bfgs.lbfgs_njit,):
+            return lambda coords: func(
+                coords, self.potential_derivative_njit, self.potential_func_njit)[0]
         return lambda coords: func(coords, self.potential_derivative, **kwargs)
 
     def _log_highscore(self, opt_coords: np.ndarray, method_name: str, log_info:str | None) -> None:
@@ -359,7 +363,7 @@ class Optimizer:
     def genetic_algorithm(
         self,
         N_atoms: int,
-        Pop_size: int = 50,
+        Pop_size: int = 10,
         local_optimizer: str | Callable = bfgs.LBFGS,
         local_optimizer_kwargs: dict | None = None,
         number_of_iterations: int = 100,
@@ -468,14 +472,14 @@ class Optimizer:
         N_atoms: int,
         M: int = 10,
         temps: str | np.ndarray = "Auto",
-        T_min: float = 0.05,
-        T_max: float = 0.40,
+        T_min: float = 0.04,
+        T_max: float = 0.50,
         deltas: str | np.ndarray = "Auto",
-        d_ref: float = 0.1,
+        d_ref: float = 0.08,
         T_ref: float = 0.05,
         R_c: float = 5.0,
         swap_every: int = 10,
-        N_sweeps: int = 10000,
+        N_sweeps: int | None = None,
         quench: bool = False,
         local_optimizer: str | Callable = bfgs.LBFGS,
         local_optimizer_kwargs: dict | None = None,
@@ -510,7 +514,7 @@ class Optimizer:
             are attempted. Default is 10.
         :param N_sweeps: int, optional
             Total number of Monte Carlo sweeps per replica (each sweep performs ``N_atoms``
-            trial moves). Default is 2000.
+            trial moves). Default is None, setting it to 100 * (N_atoms ** 2.
         :param quench: bool, optional
             If True, locally relaxes the lowest-energy configuration to T=0 at the end of
             the run using ``local_optimizer``. Default is False.
@@ -527,6 +531,9 @@ class Optimizer:
         cluster_pot_fn = lambda coords: potentials_calculations.cluster_potential(
             coords, self.potential_func
         )
+
+        if N_sweeps == None:
+            N_sweeps = 10 * (N_atoms ** 2)
 
         energies, coords = parallel_tempering.make_start(
             N_atoms, M, R_c, cluster_pot_fn
@@ -723,14 +730,14 @@ class Optimizer:
         N_atoms: int,
         local_optimizer: str | Callable = bfgs.LBFGS,
         local_optimizer_kwargs: dict | None = None,
-        T_start: float = 1.0,
+        T_start: float = 0.45,
         T_end: float = 0.01,
         steps_per_atom: int = 20_000,
         step_size: float = 0.2,
         radius: float | None = None,
         target_acceptance: float = 0.45,
         adapt_every: int = 1000,
-        seed: int = 0,
+        seed: int = None,
         log_info: str | None = "",
     ) -> np.ndarray:
         """
