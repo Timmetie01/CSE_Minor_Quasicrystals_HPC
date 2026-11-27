@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time as t
 
 from src.main_code.local_optimizers import fire, bfgs
-from src.main_code.potentials_calculations import lennard_jones_derivative, lennard_jones_potential
+from src.main_code.potentials_calculations import lennard_jones_derivative, lennard_jones_potential, lennard_jones_derivative_njit, lennard_jones_potential_njit, cluster_potential
 import pytest
 
 glob_opt_150 = np.array([
@@ -164,11 +164,14 @@ def compare_near_global(glob_opt_coords, N):
     fire_times = np.zeros(N)
     bfgs_times = np.zeros(N)
     lbfgs_times = np.zeros(N)
+    lbfgs_numba_times = np.zeros(N)
 
     fire_reaches_glob = np.zeros(N, np.bool)
     bfgs_reaches_glob = np.zeros(N, np.bool)
     lbfgs_reaches_glob = np.zeros(N, np.bool)
+    lbfgs_numba_reaches_glob = np.zeros(N, np.bool)
     atom_count = len(glob_opt_coords)
+    opt_pot = cluster_potential(glob_opt_coords)
 
 
     for i in range(N):
@@ -187,22 +190,35 @@ def compare_near_global(glob_opt_coords, N):
         lbfgs_opt = bfgs.LBFGS(offset_coords, lennard_jones_derivative, lennard_jones_potential, print_convergence=False)
         lbfgs_times[i] = t.time() - t0
 
-        if fire_opt == pytest.approx(glob_opt_coords):
-            fire_reaches_glob[i] = True
-        if bfgs_opt == pytest.approx(glob_opt_coords):
-            bfgs_reaches_glob[i] = True    
-        if lbfgs_opt == pytest.approx(glob_opt_coords):
-            lbfgs_reaches_glob[i] = True    
+        t0 = t.time()
+        lbfgs_numba_opt = bfgs.lbfgs_njit(offset_coords, lennard_jones_derivative_njit, lennard_jones_potential_njit)
+        lbfgs_numba_times[i] = t.time() - t0
 
-    plt.hist([fire_times,bfgs_times, lbfgs_times], color=['firebrick','darkblue','darkgreen'], label=['FIRE','BFGS','L-BFGS'], bins=25)
+        lbfgs_numba_opt = lbfgs_numba_opt[0]
+        
+
+        fire_reaches_glob[i] = (cluster_potential(fire_opt) == pytest.approx(opt_pot))
+        bfgs_reaches_glob[i] = (cluster_potential(bfgs_opt) == pytest.approx(opt_pot))
+        lbfgs_reaches_glob[i] = (cluster_potential(lbfgs_opt) == pytest.approx(opt_pot))
+        lbfgs_numba_reaches_glob[i] = (cluster_potential(lbfgs_numba_opt) == pytest.approx(opt_pot))
+
+    if atom_count == 150:
+        print(f"""Times the optimizers reached the global minimum:
+            FIRE: Reached global minimum {np.sum(fire_reaches_glob)} times, averaging a runtime of {np.average(fire_times)} seconds.
+            BFGS: Reached global minimum {np.sum(bfgs_reaches_glob)} times, averaging a runtime of {np.average(bfgs_times)} seconds.
+            L-BFGS: Reached global minimum {np.sum(lbfgs_reaches_glob)} times, averaging a runtime of {np.average(lbfgs_times)} seconds.
+            njit-L-BFGS: Reached global minimum {np.sum(lbfgs_numba_reaches_glob)} times, averaging a runtime of {np.average(lbfgs_numba_times[1:])} seconds.
+            """ )
+    plt.hist([fire_times,bfgs_times, lbfgs_times, lbfgs_numba_times], color=['firebrick','darkblue','darkgreen', 'darkorange'], label=['FIRE','BFGS','L-BFGS', 'L-BFGS (Numba)'], range=(0, min(0.6, max(np.max(fire_times), np.max(bfgs_times), np.max(lbfgs_times), np.max(lbfgs_numba_times[1:])))), bins=50)
     plt.xlabel('Optimization run duration')
     plt.ylabel('Amount of times occured')
-    plt.title('Local Optimizer Comaparison Histogram')
+    plt.title(f'Local Optimizer Comparison Histogram ({atom_count} atoms)')
     plt.legend()
+    print(f'The jit compilation took {lbfgs_numba_times[0]} seconds the first times lbfgs_numba was ran.')
     plt.show()
         
 compare_near_global(np.array([[0,0,0], [2,0,0]]), 1000)
-compare_near_global(glob_opt_150, 50)
+compare_near_global(glob_opt_150, 100)
         
 
 

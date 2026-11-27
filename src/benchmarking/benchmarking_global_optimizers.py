@@ -35,10 +35,10 @@ def compare_single_cluster_size(N_atoms, N_runs):
         parallel_tempering[0,i] = t.time() - t0
         parallel_tempering[1,i] = (1 if Potential.potential(coords) == pytest.approx(opt_pot) else 0)
  
-        # t0 = t.time()
-        # coords = Opt.parallel_tempering_numba(N_atoms)
-        # parallel_tempering_numba[0,i] = t.time() - t0
-        # parallel_tempering_numba[1,i] = (1 if Potential.potential(coords) == pytest.approx(opt_pot) else 0)
+        t0 = t.time()
+        coords = Opt.parallel_tempering_numba(N_atoms)
+        parallel_tempering_numba[0,i] = t.time() - t0
+        parallel_tempering_numba[1,i] = (1 if Potential.potential(coords) == pytest.approx(opt_pot) else 0)
 
         t0 = t.time()
         coords = Opt.simulated_annealing(N_atoms)
@@ -47,7 +47,7 @@ def compare_single_cluster_size(N_atoms, N_runs):
 
     plt.hist([basin_hopping[0,:], genetic_algorithm[0,:], parallel_tempering[0,:], parallel_tempering_numba[0,:], simulated_annealing[0,:]],
             label=["Basin Hopping", "Genetic Algorithm", "Parallel Tempering", "Parallel Tempering (Numba)", "Simulated Annealing"],
-            bins=15
+            bins=25
     )
     plt.title("Histogram of Global Optimizer Runtimes")
     plt.grid(ls='--')
@@ -58,7 +58,7 @@ def compare_single_cluster_size(N_atoms, N_runs):
     plt.show()
 
 
-compare_single_cluster_size(20, 10)
+compare_single_cluster_size(5, 5)
 
 
 

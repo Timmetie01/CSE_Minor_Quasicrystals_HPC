@@ -18,3 +18,6 @@
 25-11-2026 15:54:25  | N=  10 | LJ_1.0_1.0         | E =     -28.1755531240 | method = parallel_tempering   | prev =     -28.1668009541 |      METHOD BEST       | 
 25-11-2026 16:00:01  | N=  20 | LJ_1.0_1.0         | E =     -72.7850639124 | method = parallel_tempering   |                           | FIRST ATTEMPT (METHOD) | 
 25-11-2026 16:02:45  | N=  20 | LJ_1.0_1.0         | E =     -75.4804265297 | method = parallel_tempering   | prev =     -72.7850639124 |      METHOD BEST       | 
+26-11-2026 14:30:45  | N=   5 | LJ_1.0_1.0         | E =      -9.0860262602 | method = parallel_tempering   |                           | FIRST ATTEMPT (METHOD) | 
+26-11-2026 14:31:59  | N=   5 | LJ_1.0_1.0         | E =      -9.0904807753 | method = parallel_tempering   | prev =      -9.0860262602 |      METHOD BEST       | 
+26-11-2026 14:34:08  | N=   5 | LJ_1.0_1.0         | E =      -9.0927611793 | method = parallel_tempering   | prev =      -9.0904807753 |      METHOD BEST       | 

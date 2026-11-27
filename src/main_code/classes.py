@@ -300,7 +300,7 @@ class Optimizer:
         beta: float = 1.0,
         max_iter: int = 10_000,
         perturbation_type: str = "random",
-        delta: float = 1.5,
+        delta: float = 1.8,
         init_coords: np.ndarray | None = None,
         log_info: str | None = "",
     ) -> np.ndarray:
@@ -324,7 +324,7 @@ class Optimizer:
             Method used to perturb the cluster. Default is ``"random"``.
         :param delta: float, optional
             Maximum displacement in each Cartesian direction for random perturbations.
-            Must be finite and positive. Default is 1.5.
+            Must be finite and positive. Default is 1.8.
         :param init_coords: array_like, shape (N_atoms, 3), optional
             Custom initial coordinates. If None, spawns random coordinates in a cube of
             side length ``2 * N_atoms ** (1/3)``.
@@ -475,7 +475,7 @@ class Optimizer:
         T_ref: float = 0.05,
         R_c: float = 5.0,
         swap_every: int = 10,
-        N_sweeps: int = 2000,
+        N_sweeps: int = 10000,
         quench: bool = False,
         local_optimizer: str | Callable = bfgs.LBFGS,
         local_optimizer_kwargs: dict | None = None,

@@ -46,7 +46,7 @@ def test_optimizers_callable():
         local_optimizer="LBFGS",
         local_optimizer_kwargs=None,
         max_iter=3,
-        delta=0.5,
+        delta=1.8,
         log_info=None,
     )
     _assert_valid_coords(res_bh_str, "basin_hopping (LBFGS string)")
