@@ -1,17 +1,11 @@
-import shap
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from time import perf_counter
 import matplotlib.pyplot as plt
 from collections.abc import Callable
-from sklearn.ensemble import RandomForestClassifier
 from src.main_code.local_optimizers.bfgs import LBFGS
 from src.main_code import potentials_calculations as pot
-from src.main_code.global_optimizers.basin_hopping_library import basin_hopping as bh
-from sklearn.model_selection import train_test_split, GroupShuffleSplit
-from sklearn.metrics import (accuracy_score, average_precision_score, roc_auc_score, classification_report,confusion_matrix)
-
 from src.main_code.global_optimizers.basin_hopping_library.feature_extraction import (calculate_features, create_observation,  benchmark_feature_cost)
 
 OPTIMAL_DELTAS = {
