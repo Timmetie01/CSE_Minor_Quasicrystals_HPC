@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from src.main_code.global_optimizers import basin_hopping as bh
+from src.main_code.global_optimizers.basin_hopping_library import basin_hopping as bh
 from src.main_code import potentials_calculations as pot
 from src.main_code.local_optimizers.bfgs import LBFGS
 
